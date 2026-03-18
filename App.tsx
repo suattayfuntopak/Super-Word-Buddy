@@ -27,9 +27,9 @@ const App: React.FC = () => {
   const [listDisplayLimit, setListDisplayLimit] = useState(30);
 
   useEffect(() => {
-    if (!process.env.API_KEY) {
-      setError("Sistem yapılandırması eksik (API Key bulunamadı).");
-    }
+    if (!import.meta.env.VITE_GEMINI_API_KEY) {
+  setError("Sistem yapılandırması eksik (API Key bulunamadı).");
+}
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
