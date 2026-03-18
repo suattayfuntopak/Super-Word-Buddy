@@ -75,7 +75,7 @@ export const analyzeVocabulary = async (base64Data: string, mimeType: string): P
 };
 
 export const generateQuiz = async (words: VocabularyItem[]): Promise<QuizQuestion[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
   const basketSubset = [...words].sort(() => Math.random() - 0.5).slice(0, 40);
   
   const prompt = `Sen bir İngilizce öğretmenisin. Aşağıdaki kelimelerden 10 soruluk bir test hazırla. 
