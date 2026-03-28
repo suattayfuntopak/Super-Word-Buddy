@@ -1,0 +1,15 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "super-word-buddy-897673322308.us-west1.run.app"
+        }
+      ],
+      "destination": "https://swb.suattayfuntopak.com/$1",
+      "permanent": true
+    }
+  ]
+}
