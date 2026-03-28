@@ -76,7 +76,7 @@ export const analyzeVocabulary = async (base64Data: string, mimeType: string): P
 
 export const generateQuiz = async (words: VocabularyItem[]): Promise<QuizQuestion[]> => {
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-  const basketSubset = [...words].sort(() => Math.random() - 0.5).slice(0, 40);
+  const basketSubset = [...words].sort(() => Math.random() - 0.5).slice(0, 20);
   
   const prompt = `Sen bir İngilizce öğretmenisin. Aşağıdaki kelimelerden 10 soruluk bir test hazırla. 
   SORU SEVİYESİ: Soruların zorluk derecesi A2 ile B2 seviyeleri arasında dengeli ve KARIŞIK olmalı (bazıları A2, bazıları B1, bazıları B2).

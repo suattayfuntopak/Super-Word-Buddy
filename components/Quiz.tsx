@@ -114,7 +114,7 @@ const Quiz: React.FC<QuizProps> = ({ questions, onClose }) => {
   const labels = ['A', 'B', 'C', 'D', 'E'];
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 relative" onClick={() => setActiveMeaningIdx(null)}>
+    <div className={`w-full max-w-3xl mx-auto space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 relative ${isAnswered ? 'pb-28' : ''}`} onClick={() => setActiveMeaningIdx(null)}>
       <div className="flex justify-between items-center mb-4 px-4 sm:px-6">
         <span className="text-sm sm:text-lg font-black text-slate-300 uppercase tracking-widest">SORU {currentIndex + 1} / {questions.length}</span>
         <div className="flex items-center space-x-2 bg-yellow-50 px-3 sm:px-5 py-1.5 sm:py-2 rounded-full">
@@ -244,12 +244,16 @@ const Quiz: React.FC<QuizProps> = ({ questions, onClose }) => {
       </div>
 
       {isAnswered && (
-        <button 
-          onClick={nextQuestion}
-          className="w-full py-4 sm:py-6 bg-orange-400 text-white rounded-[1.5rem] sm:rounded-[2.5rem] font-black text-xl sm:text-2xl hover:bg-orange-500 transition-all transform hover:scale-[1.02] shadow-2xl shadow-orange-100 animate-in slide-in-from-top-4"
-        >
-          {currentIndex === questions.length - 1 ? 'Sonucu Gör ✨' : 'Sıradaki Soru 🚀'}
-        </button>
+        <div className="fixed bottom-0 inset-x-0 z-50 p-4 bg-white/90 backdrop-blur-sm border-t border-slate-100">
+          <div className="max-w-3xl mx-auto">
+            <button
+              onClick={nextQuestion}
+              className="w-full py-4 sm:py-6 bg-orange-400 text-white rounded-[1.5rem] sm:rounded-[2.5rem] font-black text-xl sm:text-2xl hover:bg-orange-500 transition-all transform hover:scale-[1.02] shadow-2xl shadow-orange-100 animate-in slide-in-from-bottom-4"
+            >
+              {currentIndex === questions.length - 1 ? 'Sonucu Gör ✨' : 'Sıradaki Soru 🚀'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
