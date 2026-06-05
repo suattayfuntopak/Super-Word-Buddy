@@ -7,6 +7,7 @@ export interface VocabularyItem {
   wordTypeTr: string; // maps to 'word_type_tr' (isim, fiil, vb.)
   exampleSentence: string; // maps to 'example_sentence_en'
   exampleSentenceTurkish: string; // maps to 'example_sentence_tr'
+  userId?: string; // maps to 'user_id', used for ownership checks
 }
 
 export interface User {

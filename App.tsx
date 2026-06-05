@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { AppState, VocabularyItem, QuizQuestion, User } from './types';
 import { analyzeVocabulary, generateQuiz } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
+import { speak } from './utils/speak';
 import FileUpload from './components/FileUpload';
 import Flashcards from './components/Flashcards';
 import Quiz from './components/Quiz';
@@ -25,11 +26,12 @@ const App: React.FC = () => {
   const [editingItem, setEditingItem] = useState<VocabularyItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [listDisplayLimit, setListDisplayLimit] = useState(30);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!import.meta.env.VITE_GEMINI_API_KEY) {
-  setError("Sistem yapılandırması eksik (API Key bulunamadı).");
-}
+    if (!import.meta.env.VITE_GEMINI_API_KEY && !process.env.API_KEY) {
+      setError("Sistem yapılandırması eksik (API Key bulunamadı).");
+    }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -74,7 +76,7 @@ const App: React.FC = () => {
       const { count, error: countError } = await supabase
         .from('vocabulary')
         .select('*', { count: 'exact', head: true });
-      
+
       if (!countError && count !== null) {
         setTotalPoolCount(count);
       }
@@ -92,7 +94,7 @@ const App: React.FC = () => {
           .range(from, to);
 
         if (fetchError) throw fetchError;
-        
+
         if (data && data.length > 0) {
           allData = [...allData, ...data];
           if (data.length < 1000) {
@@ -106,7 +108,6 @@ const App: React.FC = () => {
         }
       }
 
-      // Deduplicate by ID to prevent "duplicate key" errors in React
       const uniqueData = Array.from(new Map(allData.map(item => [String(item.id), item])).values());
 
       const mapped = uniqueData.map(item => ({
@@ -116,7 +117,8 @@ const App: React.FC = () => {
         wordTypeEn: item.word_type_en || '',
         wordTypeTr: item.word_type_tr || '',
         exampleSentence: item.example_sentence_en || '',
-        exampleSentenceTurkish: item.example_sentence_tr || ''
+        exampleSentenceTurkish: item.example_sentence_tr || '',
+        userId: item.user_id || ''
       }));
       setVocabItems(mapped);
     } catch (err: any) {
@@ -126,28 +128,6 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-  };
-
-  const speak = (text: string, lang: 'en-GB' | 'en-US') => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    
-    const preferredVoice = voices.find(v => {
-      const matchesLang = v.lang.includes(lang);
-      if (lang === 'en-GB') {
-        return matchesLang && (v.name.includes('Male') || v.name.includes('George') || v.name.includes('Arthur'));
-      } else {
-        return matchesLang && (v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Susan'));
-      }
-    }) || voices.find(v => v.lang.includes(lang));
-
-    if (preferredVoice) utterance.voice = preferredVoice;
-    utterance.lang = lang;
-    utterance.rate = 0.85; 
-    utterance.pitch = 1.0; 
-    utterance.volume = 1.0; 
-    window.speechSynthesis.speak(utterance);
   };
 
   const logActivity = async (type: string, score: number, total: number) => {
@@ -191,6 +171,34 @@ const App: React.FC = () => {
     }
   };
 
+  const handleFileSelect = async (base64: string, mimeType: string) => {
+    setState('analyzing');
+    try {
+      const newWords = await analyzeVocabulary(base64, mimeType);
+      if (currentUser && newWords.length > 0) {
+        const existingWords = new Set(vocabItems.map(v => v.word.toLowerCase().trim()));
+        const toInsert = newWords.filter(w => !existingWords.has(w.word.toLowerCase().trim()));
+
+        for (const item of toInsert) {
+          await supabase.from('vocabulary').insert([{
+            english: item.word,
+            turkish: item.meaning,
+            word_type_en: item.wordTypeEn,
+            word_type_tr: item.wordTypeTr,
+            example_sentence_en: item.exampleSentence,
+            example_sentence_tr: item.exampleSentenceTurkish,
+            user_id: currentUser.id
+          }]);
+        }
+        await fetchAllWords();
+      }
+      setState('selection');
+    } catch (err: any) {
+      setError(err.message || 'Analiz sırasında bir hata oluştu.');
+      setState('upload');
+    }
+  };
+
   const addOrUpdateWord = async (item: VocabularyItem) => {
     if (!currentUser) return;
     if (!item.id && vocabItems.some(v => v.word.toLowerCase().trim() === item.word.toLowerCase().trim())) {
@@ -212,15 +220,20 @@ const App: React.FC = () => {
 
       let opError;
       if (item.id) {
-        const { error } = await supabase.from('vocabulary').update(payload).eq('id', item.id);
+        // Ownership check: only allow editing your own words
+        const { error } = await supabase
+          .from('vocabulary')
+          .update(payload)
+          .eq('id', item.id)
+          .eq('user_id', currentUser.id);
         opError = error;
       } else {
         const { error } = await supabase.from('vocabulary').insert([payload]);
         opError = error;
       }
-      
+
       if (opError) throw opError;
-      
+
       await fetchAllWords();
       setEditingItem(null);
       setIsModalOpen(false);
@@ -229,11 +242,26 @@ const App: React.FC = () => {
     }
   };
 
-  // Harf duyarlılığı olmadan arama yapmak için filtreleme
-  const filteredVocab = searchTerm.trim() === '' 
-    ? vocabItems 
-    : vocabItems.filter(item => 
-        item.word.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const deleteWord = async (item: VocabularyItem) => {
+    if (!currentUser || item.userId !== currentUser.id) return;
+    try {
+      const { error } = await supabase
+        .from('vocabulary')
+        .delete()
+        .eq('id', item.id)
+        .eq('user_id', currentUser.id);
+      if (error) throw error;
+      setPendingDeleteId(null);
+      await fetchAllWords();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const filteredVocab = searchTerm.trim() === ''
+    ? vocabItems
+    : vocabItems.filter(item =>
+        item.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.meaning.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
@@ -255,8 +283,8 @@ const App: React.FC = () => {
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Global Havuz</span>
                   <span className="text-sm font-black text-indigo-600">{totalPoolCount.toLocaleString('tr-TR')} Kelime</span>
                 </div>
-                <button 
-                  onClick={() => { setState('selection'); setSearchTerm(''); }} 
+                <button
+                  onClick={() => { setState('selection'); setSearchTerm(''); }}
                   className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-indigo-50 text-xl sm:text-2xl transition-all shadow-inner border border-slate-100"
                   title="Ana Menü"
                 >🏠</button>
@@ -305,7 +333,9 @@ const App: React.FC = () => {
           <AuthForm mode={state} onAuthSuccess={(user) => { setCurrentUser(user); setState('selection'); }} onToggleMode={(newMode) => setState(newMode)} />
         )}
 
-        {state === 'upload' && <FileUpload onFileSelect={(b, m) => { /* Logic */ }} />}
+        {state === 'upload' && (
+          <FileUpload onFileSelect={handleFileSelect} />
+        )}
 
         {state === 'analyzing' && (
           <div className="flex flex-col items-center justify-center py-24 space-y-6 text-center">
@@ -321,7 +351,7 @@ const App: React.FC = () => {
               <h2 className="text-4xl font-black text-slate-900 tracking-tight italic">Common Academic Knowledge</h2>
               <p className="text-slate-400 text-lg font-medium">Toplam <span className="text-indigo-600 font-black">{totalPoolCount.toLocaleString('tr-TR')}</span> kelimelik devasa bir kaynağımız var.</p>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div onClick={() => setState('learning')} className="bg-gradient-to-br from-blue-400 to-cyan-500 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white">
                 <div className="text-5xl mb-4 group-hover:animate-bounce transition-all">📚</div>
@@ -353,6 +383,11 @@ const App: React.FC = () => {
                 <h3 className="text-2xl font-black text-slate-100">Play Game</h3>
                 <p className="text-sm text-white/70 mt-2 font-bold">Eğlenerek Öğren</p>
               </div>
+              <div onClick={() => setState('stats')} className="bg-gradient-to-br from-violet-500 to-purple-700 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white sm:col-span-2 lg:col-span-1">
+                <div className="text-5xl mb-4 group-hover:animate-bounce transition-all">📊</div>
+                <h3 className="text-2xl font-black text-slate-100">İstatistikler</h3>
+                <p className="text-sm text-white/70 mt-2 font-bold">Başarı Paneli</p>
+              </div>
             </div>
 
             <div className="flex flex-col items-center pt-2 border-t border-slate-100">
@@ -369,16 +404,16 @@ const App: React.FC = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="text-2xl sm:text-3xl font-black text-slate-800">Global Kelime Havuzu</h2>
               <div className="relative w-full md:w-96">
-                <input 
-                  type="text" 
-                  placeholder="Kelime veya anlam ara..." 
+                <input
+                  type="text"
+                  placeholder="Kelime veya anlam ara..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full bg-white border-2 border-slate-100 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3 pl-10 sm:pl-12 pr-10 sm:pr-12 text-sm sm:text-base font-bold focus:border-indigo-500 outline-none transition-all shadow-sm"
                 />
                 <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-lg sm:text-xl">🔍</span>
                 {searchTerm && (
-                  <button 
+                  <button
                     onClick={() => setSearchTerm('')}
                     className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
                     title="Temizle"
@@ -390,7 +425,7 @@ const App: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredVocab.length > 0 ? (
                 filteredVocab.slice(0, listDisplayLimit).map((item) => (
@@ -402,15 +437,55 @@ const App: React.FC = () => {
                           <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">({item.wordTypeEn})</span>
                         )}
                       </div>
-                      <div className="flex space-x-1">
-                        <button 
+                      <div className="flex items-center space-x-1">
+                        {/* Edit/Delete — only for word owner */}
+                        {currentUser && item.userId === currentUser.id && (
+                          <div className="flex items-center space-x-1 mr-1">
+                            <button
+                              onClick={() => { setEditingItem(item); setIsModalOpen(true); }}
+                              className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-500 transition-colors border border-slate-100"
+                              title="Düzenle"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3 sm:w-3.5 sm:h-3.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                              </svg>
+                            </button>
+                            {pendingDeleteId === item.id ? (
+                              <div className="flex items-center space-x-1">
+                                <button
+                                  onClick={() => deleteWord(item)}
+                                  className="px-2 py-0.5 bg-red-500 text-white rounded-lg text-[9px] sm:text-[10px] font-black hover:bg-red-600 transition-colors"
+                                >
+                                  Sil?
+                                </button>
+                                <button
+                                  onClick={() => setPendingDeleteId(null)}
+                                  className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-lg text-[9px] sm:text-[10px] font-black hover:bg-slate-200 transition-colors"
+                                >
+                                  Hayır
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setPendingDeleteId(item.id)}
+                                className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors border border-slate-100"
+                                title="Sil"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3 sm:w-3.5 sm:h-3.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <button
                           onClick={() => speak(item.word, 'en-GB')}
                           className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:scale-110 transition-transform"
                           title="Listen UK"
                         >
                           <img src="https://flagcdn.com/w40/gb.png" className="w-full h-full object-cover" alt="UK" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => speak(item.word, 'en-US')}
                           className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:scale-110 transition-transform"
                           title="Listen US"
@@ -438,7 +513,7 @@ const App: React.FC = () => {
 
             {filteredVocab.length > listDisplayLimit && (
               <div className="flex justify-center pt-4">
-                <button 
+                <button
                   onClick={() => setListDisplayLimit(prev => prev + 30)}
                   className="bg-indigo-50 text-indigo-600 px-8 py-3 rounded-2xl font-black hover:bg-indigo-100 transition-all shadow-sm"
                 >
@@ -448,7 +523,7 @@ const App: React.FC = () => {
             )}
 
             <div className="flex justify-center pt-6 sm:pt-8">
-              <button onClick={() => { setState('selection'); setListDisplayLimit(30); }} className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm">← Ana Menüye Dön</button>
+              <button onClick={() => { setState('selection'); setListDisplayLimit(30); setPendingDeleteId(null); }} className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm">← Ana Menüye Dön</button>
             </div>
           </div>
         )}
@@ -457,12 +532,12 @@ const App: React.FC = () => {
         {state === 'quiz' && <Quiz questions={quizQuestions} onClose={async (score, total) => { await logActivity('quiz', score, total); setState('selection'); }} />}
         {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} onClose={async (score, total) => { await logActivity('writing', score, total); setState('selection'); }} />}
         {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} />}
-        {state === 'tutor' && <TutorView vocabItems={vocabItems} onBack={() => setState('selection')} onAnalyzing={() => setState('analyzing')} onFinish={() => { fetchAllWords(); setState('selection'); }} />}
+        {state === 'tutor' && <TutorView onBack={() => setState('selection')} />}
         {state === 'games' && <GamesHub vocabItems={vocabItems} onBack={() => setState('selection')} />}
       </main>
 
       <footer className="mt-4 pt-0 pb-2 bg-white border-t border-slate-100 flex flex-col items-center space-y-1">
-         <div className="flex items-center justify-center space-x-4 px-6 text-center">
+        <div className="flex items-center justify-center space-x-4 px-6 text-center">
           <p className="text-indigo-600 font-bold italic text-sm sm:text-base">Beğendiysen belki bana bir kahve ısmarlarsın ;)</p>
           <a href="https://buymeacoffee.com/suattayfuntopak" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 bg-[#FFDD00] text-black px-4 py-2 rounded-xl font-bold hover:scale-105 transition-all shadow-lg hover:shadow-yellow-100">
             <span className="text-xl">☕</span>

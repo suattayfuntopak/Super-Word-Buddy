@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { VocabularyItem } from '../types';
 
 interface GamesHubProps {
@@ -29,7 +29,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ vocabItems, onBack }) => {
           <div onClick={() => setMode('match')} className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-xl border-4 border-indigo-50 hover:scale-105 transition-all cursor-pointer text-center group">
             <div className="text-4xl sm:text-6xl mb-4 sm:mb-6 group-hover:rotate-12 transition-all">🧩</div>
             <h3 className="text-lg sm:text-xl font-black text-slate-800">Kelime Eşleştir</h3>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-bold uppercase tracking-tighter">Kelime Eşleştir</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-bold uppercase tracking-tighter">Kelime & Anlam Eşleştir</p>
           </div>
           <div onClick={() => setMode('cloze')} className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-xl border-4 border-green-50 hover:scale-105 transition-all cursor-pointer text-center group">
             <div className="text-4xl sm:text-6xl mb-4 sm:mb-6 group-hover:scale-110 transition-all">📝</div>
@@ -61,6 +61,30 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
   const [gameOver, setGameOver] = useState(false);
   const [mistakes, setMistakes] = useState(0);
 
+  // useRef keeps the latest count accessible inside the interval/nextLevel without stale closures
+  const questionCountRef = useRef(0);
+  const targetWordRef = useRef<VocabularyItem | null>(null);
+
+  const nextLevel = () => {
+    if (questionCountRef.current >= 20) {
+      setGameOver(true);
+      return;
+    }
+    const subset = [...vocabItems].sort(() => Math.random() - 0.5).slice(0, 4);
+    const target = subset[Math.floor(Math.random() * subset.length)];
+    targetWordRef.current = target;
+    setTargetWord(target);
+    questionCountRef.current += 1;
+    setQuestionCount(questionCountRef.current);
+
+    setFallingWords(subset.map((item, i) => ({
+      id: Math.random() + i + Date.now(),
+      item,
+      x: 5 + (i * 22),
+      y: -(Math.random() * 50 + 10)
+    })));
+  };
+
   useEffect(() => {
     if (vocabItems.length === 0) return;
     nextLevel();
@@ -74,32 +98,24 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
     return () => clearInterval(interval);
   }, [vocabItems]);
 
-  const nextLevel = () => {
-    if (questionCount >= 20) {
-      setGameOver(true);
-      return;
-    }
-    const subset = [...vocabItems].sort(() => Math.random() - 0.5).slice(0, 4);
-    const target = subset[Math.floor(Math.random() * subset.length)];
-    setTargetWord(target);
-    setQuestionCount(prev => prev + 1);
-    
-    setFallingWords(subset.map((item, i) => ({
-      id: Math.random() + i + Date.now(),
-      item,
-      x: 5 + (i * 22),
-      y: -(Math.random() * 50 + 10) 
-    })));
-  };
-
   const handleShoot = (id: number, word: string) => {
-    if (word === targetWord?.word) {
+    if (word === targetWordRef.current?.word) {
       setScore(s => s + 10);
       nextLevel();
     } else {
       setScore(s => Math.max(0, s - 5));
       setMistakes(m => m + 1);
     }
+  };
+
+  const restartGame = () => {
+    questionCountRef.current = 0;
+    targetWordRef.current = null;
+    setScore(0);
+    setMistakes(0);
+    setQuestionCount(0);
+    setGameOver(false);
+    nextLevel();
   };
 
   if (gameOver) {
@@ -120,7 +136,7 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
           </div>
         </div>
         <div className="flex flex-col space-y-3 sm:space-y-4 pt-4 sm:pt-6">
-          <button onClick={() => { setScore(0); setMistakes(0); setQuestionCount(0); setGameOver(false); nextLevel(); }} className="px-6 sm:px-10 py-4 sm:py-5 bg-orange-400 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl shadow-xl hover:scale-105 transition-all">Yeni Oyun ✨</button>
+          <button onClick={restartGame} className="px-6 sm:px-10 py-4 sm:py-5 bg-orange-400 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl shadow-xl hover:scale-105 transition-all">Yeni Oyun ✨</button>
           <button onClick={onBack} className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-sm">Menüye Dön</button>
         </div>
       </div>
@@ -137,9 +153,9 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
         <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-widest">SORU</span>
         <span className="text-lg sm:text-2xl">{questionCount}/20</span>
       </div>
-      
+
       {fallingWords.map(w => (
-        <button 
+        <button
           key={w.id}
           onClick={() => handleShoot(w.id, w.item.word)}
           className="absolute bg-white text-slate-800 px-3 sm:px-5 py-2 sm:py-3 rounded-xl sm:rounded-2xl font-black shadow-lg transition-transform hover:scale-110 active:scale-95 border-b-4 border-slate-200 text-xs sm:text-base whitespace-nowrap"
@@ -158,8 +174,10 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
 };
 
 // --- GAME 2: PAIR MATCH ---
+type MatchCard = { id: number; text: string; matchId: string; type: 'en' | 'tr'; isFlipped: boolean; isMatched: boolean };
+
 const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> = ({ vocabItems, onBack }) => {
-  const [cards, setCards] = useState<{ id: number; text: string; matchId: string; type: 'en' | 'tr'; isFlipped: boolean; isMatched: boolean }[]>([]);
+  const [cards, setCards] = useState<MatchCard[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [score, setScore] = useState(0);
   const [gameFinished, setGameFinished] = useState(false);
@@ -170,45 +188,49 @@ const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
 
   const initGame = () => {
     const subset = [...vocabItems].sort(() => Math.random() - 0.5).slice(0, 6);
-    const pairs: any[] = [];
+    const pairs: MatchCard[] = [];
     subset.forEach((item, i) => {
-      pairs.push({ id: Math.random() + i + Date.now(), text: item.word, matchId: item.id, type: 'en', isFlipped: false, isMatched: false });
-      pairs.push({ id: Math.random() + i + 500 + Date.now(), text: item.meaning, matchId: item.id, type: 'tr', isFlipped: false, isMatched: false });
+      pairs.push({ id: i * 2, text: item.word, matchId: item.id, type: 'en', isFlipped: false, isMatched: false });
+      pairs.push({ id: i * 2 + 1, text: item.meaning, matchId: item.id, type: 'tr', isFlipped: false, isMatched: false });
     });
     setCards(pairs.sort(() => Math.random() - 0.5));
     setGameFinished(false);
     setSelected([]);
+    setScore(0);
   };
 
   const handleCardClick = (idx: number) => {
+    // Guard: already 2 selected, already flipped, or already matched
     if (selected.length === 2 || cards[idx].isFlipped || cards[idx].isMatched) return;
-    
+
     const newSelected = [...selected, idx];
-    const newCards = [...cards];
-    newCards[idx].isFlipped = true;
-    setCards(newCards);
+
+    // Immutably flip the card
+    setCards(prev => prev.map((c, i) => i === idx ? { ...c, isFlipped: true } : c));
     setSelected(newSelected);
 
     if (newSelected.length === 2) {
-      const first = cards[newSelected[0]];
-      const second = cards[newSelected[1]];
+      const [firstIdx, secondIdx] = newSelected;
+      const firstMatchId = cards[firstIdx].matchId;
+      const secondMatchId = cards[secondIdx].matchId;
 
-      if (first.matchId === second.matchId) {
+      if (firstMatchId === secondMatchId) {
         setScore(s => s + 20);
         setTimeout(() => {
-          const matchedCards = [...cards];
-          matchedCards[newSelected[0]].isMatched = true;
-          matchedCards[newSelected[1]].isMatched = true;
-          setCards(matchedCards);
+          setCards(prev => {
+            const updated = prev.map((c, i) =>
+              (i === firstIdx || i === secondIdx) ? { ...c, isMatched: true } : c
+            );
+            if (updated.every(c => c.isMatched)) setGameFinished(true);
+            return updated;
+          });
           setSelected([]);
-          if (matchedCards.every(c => c.isMatched)) setGameFinished(true);
         }, 600);
       } else {
         setTimeout(() => {
-          const resetCards = [...cards];
-          resetCards[newSelected[0]].isFlipped = false;
-          resetCards[newSelected[1]].isFlipped = false;
-          setCards(resetCards);
+          setCards(prev => prev.map((c, i) =>
+            (i === firstIdx || i === secondIdx) ? { ...c, isFlipped: false } : c
+          ));
           setSelected([]);
         }, 800);
       }
@@ -237,11 +259,11 @@ const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
 
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4">
         {cards.map((card, i) => (
-          <div 
-            key={card.id} 
+          <div
+            key={card.id}
             onClick={() => handleCardClick(i)}
             className={`h-20 sm:h-32 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center p-2 sm:p-3 text-center text-[10px] sm:text-sm font-black cursor-pointer transition-all border-2 sm:border-4 ${
-              card.isMatched ? 'opacity-0 scale-90 pointer-events-none' : 
+              card.isMatched ? 'opacity-0 scale-90 pointer-events-none' :
               card.isFlipped ? 'bg-indigo-50 border-indigo-200 text-indigo-600 shadow-inner' : 'bg-white border-slate-100 text-transparent shadow-xl hover:border-indigo-100'
             }`}
           >
@@ -268,26 +290,30 @@ const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
   const [gameOver, setGameOver] = useState(false);
 
   useEffect(() => {
-    const shuffled = [...vocabItems].filter(v => v.exampleSentence.includes(v.word)).sort(() => Math.random() - 0.5).slice(0, 20);
+    const shuffled = [...vocabItems]
+      .filter(v => v.exampleSentence.includes(v.word))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 20);
     setItems(shuffled);
-    if (shuffled.length > 0) setupOptions(shuffled[0]);
+    if (shuffled.length > 0) setupOptions(shuffled[0], shuffled);
   }, [vocabItems]);
 
-  const setupOptions = (item: VocabularyItem) => {
-    const others = vocabItems.filter(v => v.id !== item.id).sort(() => Math.random() - 0.5).slice(0, 3).map(v => v.word);
+  const setupOptions = (item: VocabularyItem, pool: VocabularyItem[] = vocabItems) => {
+    const others = pool.filter(v => v.id !== item.id).sort(() => Math.random() - 0.5).slice(0, 3).map(v => v.word);
     setOptions([...others, item.word].sort(() => Math.random() - 0.5));
     setWrongSelections([]);
   };
 
   const handleSelect = (opt: string) => {
     if (feedback === 'correct' || wrongSelections.includes(opt)) return;
-    
+
     if (opt === items[currentIdx].word) {
       setFeedback('correct');
       setTimeout(() => {
-        if (currentIdx < items.length - 1 && currentIdx < 19) {
-          setCurrentIdx(currentIdx + 1);
-          setupOptions(items[currentIdx + 1]);
+        const nextIdx = currentIdx + 1;
+        if (nextIdx < items.length && nextIdx < 20) {
+          setCurrentIdx(nextIdx);
+          setupOptions(items[nextIdx]);
           setFeedback(null);
         } else {
           setGameOver(true);
@@ -302,16 +328,23 @@ const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
   };
 
   const resetGame = () => {
-    const shuffled = [...vocabItems].filter(v => v.exampleSentence.includes(v.word)).sort(() => Math.random() - 0.5).slice(0, 20);
+    const shuffled = [...vocabItems]
+      .filter(v => v.exampleSentence.includes(v.word))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 20);
     setItems(shuffled);
     setCurrentIdx(0);
     setMistakeCount(0);
     setGameOver(false);
     setFeedback(null);
-    if (shuffled.length > 0) setupOptions(shuffled[0]);
+    if (shuffled.length > 0) setupOptions(shuffled[0], shuffled);
   };
 
-  if (items.length === 0) return <div className="text-center p-20 font-black">Yükleniyor...</div>;
+  if (items.length === 0) return (
+    <div className="text-center p-20 font-black text-slate-400">
+      Cümle içeren yeterli kelime bulunamadı. Havuza daha fazla kelime ekleyin.
+    </div>
+  );
 
   if (gameOver) {
     return (
@@ -345,7 +378,7 @@ const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
     <div className="max-w-2xl mx-auto space-y-8 sm:space-y-12 animate-in fade-in px-4">
       <div className="flex justify-between items-center">
         <h3 className="text-xl sm:text-3xl font-black text-slate-800">Cümle Tamamlama 📝</h3>
-        <span className="bg-green-500 text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-full font-black text-xs sm:text-sm uppercase tracking-widest">{currentIdx + 1} / 20</span>
+        <span className="bg-green-500 text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-full font-black text-xs sm:text-sm uppercase tracking-widest">{currentIdx + 1} / {Math.min(items.length, 20)}</span>
       </div>
 
       <div className="text-center">
@@ -354,7 +387,7 @@ const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
 
       <div className="bg-white p-8 sm:p-12 rounded-[2.5rem] sm:rounded-[4rem] border-4 border-green-50 shadow-2xl text-center relative overflow-hidden">
         <h4 className="text-xl md:text-3xl font-medium leading-relaxed text-slate-700 break-words">
-           {displaySentence}
+          {displaySentence}
         </h4>
         {feedback === 'correct' && <div className="absolute inset-0 bg-green-500/10 flex items-center justify-center animate-in fade-in"><span className="text-4xl sm:text-6xl animate-bounce">🎯</span></div>}
       </div>
@@ -363,7 +396,7 @@ const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
         {options.map((opt, i) => {
           const isWrong = wrongSelections.includes(opt);
           const isCorrect = feedback === 'correct' && opt === current.word;
-          
+
           let btnClass = "py-4 sm:py-6 rounded-[1.5rem] sm:rounded-[2.5rem] font-black text-base sm:text-xl transition-all shadow-md border-2 sm:border-4 ";
           if (isCorrect) btnClass += "bg-green-500 border-green-300 text-white scale-105";
           else if (isWrong) btnClass += "bg-red-50 border-red-100 text-red-300 pointer-events-none";

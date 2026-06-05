@@ -1,6 +1,9 @@
 
 import React, { useState, useRef } from 'react';
 
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 interface FileUploadProps {
   onFileSelect: (base64: string, mimeType: string) => void;
   customInstruction?: string;
@@ -12,10 +15,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, customInstruction
 
   const handleFile = (file: File) => {
     if (!file) return;
-    
+
     const supportedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
     if (!supportedTypes.includes(file.type)) {
       alert("Lütfen sadece JPG, PNG veya PDF dosyası yükleyin! 🎈");
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      alert(`Dosya boyutu ${MAX_FILE_SIZE_MB}MB'ı aşamaz. Lütfen daha küçük bir dosya seçin.`);
       return;
     }
 
@@ -45,7 +53,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, customInstruction
   };
 
   return (
-    <div 
+    <div
       onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
       onDragLeave={() => setDragActive(false)}
       onDrop={(e) => { e.preventDefault(); setDragActive(false); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
@@ -68,17 +76,18 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, customInstruction
       <div className="bg-indigo-600 text-white px-6 sm:px-10 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-black text-base sm:text-lg transition-colors shadow-lg shadow-indigo-100 group-hover:bg-indigo-700">
         Dosya Seç
       </div>
-      <input 
+      <input
         ref={inputRef}
-        type="file" 
-        className="hidden" 
-        accept="image/jpeg,image/png,application/pdf" 
-        onChange={handleChange} 
+        type="file"
+        className="hidden"
+        accept="image/jpeg,image/png,application/pdf"
+        onChange={handleChange}
       />
       <div className="flex space-x-2 sm:space-x-3 items-center">
-         <span className="bg-slate-100 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-black text-slate-400">JPG</span>
-         <span className="bg-slate-100 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-black text-slate-400">PNG</span>
-         <span className="bg-slate-100 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-black text-slate-400">PDF</span>
+        <span className="bg-slate-100 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-black text-slate-400">JPG</span>
+        <span className="bg-slate-100 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-black text-slate-400">PNG</span>
+        <span className="bg-slate-100 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-black text-slate-400">PDF</span>
+        <span className="bg-slate-100 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-black text-slate-400">Maks {MAX_FILE_SIZE_MB}MB</span>
       </div>
     </div>
   );
