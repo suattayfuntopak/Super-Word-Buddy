@@ -113,6 +113,54 @@
 
 ---
 
+## Güncelleme — 2026-06-05 (3. Oturum — 5 Yeni Özellik + Session Kalıcılığı)
+
+### 19. PWA — Ana Ekrana Ekle
+- `vite-plugin-pwa` kuruldu (`devDependencies`).
+- `vite.config.ts`'e `VitePWA` plugin eklendi: `generateSW` stratejisi, uygulama manifest'i, runtime caching.
+- **Manifest:** `Super Word Buddy` · indigo theme · portrait standalone.
+- **Önbellek:** Tailwind CDN, flagcdn bayrak resimleri, Google Fonts → `CacheFirst` / `StaleWhileRevalidate`.
+- **İkonlar:** `public/icons/icon-192.png`, `icon-512.png`, `apple-touch-icon.png` (Node.js ile üretildi — pure PNG, 79·70·229 indigo gradient).
+- `index.html`'e meta etiketleri eklendi: `theme-color`, `apple-mobile-web-app-*`, `apple-touch-icon`.
+- Vercel'de canlıya alındıktan sonra Chrome/Android'de "Ana Ekrana Ekle" butonu görünür; iOS'ta Safari → Paylaş → Ana Ekrana Ekle çalışır.
+
+### 20. Session Kalıcılığı (Nerede Kaldıysan Orada Kal)
+- **Sorun:** Token yenileme veya uygulama arka plana geçince kullanıcı ana sayfaya düşüyordu.
+- **Çözüm:** `localStorage` üzerinde `swb_state_{userId}` anahtarıyla son aktif sayfa kaydediliyor.
+- Korunan durumlar: `selection`, `list`, `learning`, `writing`, `stats`, `tutor`, `games`.
+- Korunmayanlar: `quiz`, `analyzing`, `upload` (in-progress durumlar — yeniden başlatmak daha doğru).
+- Auth yenilendiğinde (`getSession` + `onAuthStateChange`) kayıtlı durum restore ediliyor.
+
+### 21. Kelime Zorluk Seviyesi & Akıllı Tekrar (Spaced Repetition)
+- Yeni `utils/wordDifficulty.ts`: `localStorage` tabanlı zorluk puanı (1–5, varsayılan 3).
+  - Doğru yanıt: `max(1, puan − 1)` · Yanlış yanıt: `min(5, puan + 2)`.
+- Quiz bitiminde tüm sorular değerlendirilir; kelime puanları güncellenir.
+- Flashcard sıralaması: En zor kelimeler (yüksek puan) öne gelir.
+- `generateLocalQuiz`: Ağırlıklı örnekleme — zor kelimeler havuza birden fazla kez girer, dolayısıyla seçilme olasılığı yüksektir.
+
+### 22. Kelime Favorileme
+- Yeni `utils/favorites.ts`: `localStorage` tabanlı favori seti (`swb_favorites_{userId}`).
+- Kelime listesinde her karta 🤍/❤️ butonu eklendi.
+- Liste görünümünde `❤️ Favoriler` filtre butonu: sadece favori kelimeleri göster/gizle.
+- Favoriler localStorage'da saklandığından hesap kapatıp açılsa bile korunur.
+
+### 23. Quiz Sonuç Ekranında Yanlış Kelimeler
+- Quiz biterken "Gözden Geçirilecekler" bölümü gösteriliyor.
+- Her yanlış kelime: İngilizce · Türkçe anlam · 🇬🇧 🇺🇸 telaffuz butonları.
+- Liste max 44px yükseklik + `overflow-y-auto` ile kart aşımını önler.
+- `Quiz.onClose` imzası: `(score, total, wrongWordStrings[])` → `App.tsx` difficulty güncelleme pipeline'ına aktarılıyor.
+
+### 24. Streak Sayacı & Günlük İlerleme
+- Statistics sayfasına 4 yeni metrik kartı eklendi:
+  - 🔥 **Günlük Seri** — arka arkaya kaç gün çalışıldığı (today → sıfır).
+  - 📅 **Bugünkü Aktivite** — bugün kaç oturum yapıldığı.
+  - ⚡ **Toplam Aktivite** — tüm zamanlar.
+  - 🎯 **Genel Başarı** — Quiz + Yazma birleşik başarı %.
+- `calculateStreak()`: `activityLogs` üzerinden geriye doğru ardışık günleri sayar.
+- `todayActivityCount()`: `created_at` ile bugünü eşleştirir.
+
+---
+
 ## Güncelleme — 2026-06-05 (2. Oturum)
 
 ### 15. Quiz Anlık Yükleme (Gemini → Yerel Üretim)
@@ -152,3 +200,20 @@
 | `components/Statistics.tsx` | GÜNCELLENDİ — onBack prop, geri dön butonu |
 | `components/Flashcards.tsx` | GÜNCELLENDİ — responsive yükseklik ve font düzeltmeleri |
 | `components/Quiz.tsx` | GÜNCELLENDİ — şık metin boyutu düzeltmesi |
+
+---
+
+## Güncellenen / Eklenen Dosyalar (3. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `utils/wordDifficulty.ts` | YENİ — localStorage spaced repetition |
+| `utils/favorites.ts` | YENİ — localStorage favori sistemi |
+| `public/icons/icon-192.png` | YENİ — PWA ikonu |
+| `public/icons/icon-512.png` | YENİ — PWA ikonu |
+| `public/icons/apple-touch-icon.png` | YENİ — iOS ikonu |
+| `vite.config.ts` | GÜNCELLENDİ — VitePWA plugin |
+| `index.html` | GÜNCELLENDİ — PWA meta etiketleri |
+| `App.tsx` | GÜNCELLENDİ — session kalıcılığı, favoriler, difficulty, liste filtreleme |
+| `components/Quiz.tsx` | GÜNCELLENDİ — yanlış kelime takibi, sonuç ekranı |
+| `components/Statistics.tsx` | GÜNCELLENDİ — streak, günlük sayaç, genel başarı |

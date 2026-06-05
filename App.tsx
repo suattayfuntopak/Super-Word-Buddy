@@ -4,6 +4,10 @@ import { AppState, VocabularyItem, QuizQuestion, QuizOption, User } from './type
 import { analyzeVocabulary } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 import { speak } from './utils/speak';
+import { getWordDifficulty, updateWordDifficulty } from './utils/wordDifficulty';
+import { getFavoriteIds, toggleFavorite } from './utils/favorites';
+
+const PERSISTABLE_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games'];
 import FileUpload from './components/FileUpload';
 import Flashcards from './components/Flashcards';
 import Quiz from './components/Quiz';
@@ -27,6 +31,8 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [listDisplayLimit, setListDisplayLimit] = useState(30);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   useEffect(() => {
     if (!import.meta.env.VITE_GEMINI_API_KEY && !process.env.API_KEY) {
@@ -42,7 +48,9 @@ const App: React.FC = () => {
         };
         setCurrentUser(user);
         fetchAllWords();
-        setState('selection');
+        // Restore last active page
+        const saved = localStorage.getItem(`swb_state_${user.id}`) as AppState | null;
+        setState(saved && PERSISTABLE_STATES.includes(saved) ? saved : 'selection');
       }
     });
 
@@ -55,7 +63,9 @@ const App: React.FC = () => {
         };
         setCurrentUser(user);
         fetchAllWords();
-        setState('selection');
+        // Restore last active page on re-auth / token refresh
+        const saved = localStorage.getItem(`swb_state_${user.id}`) as AppState | null;
+        setState(saved && PERSISTABLE_STATES.includes(saved) ? saved : 'selection');
       } else {
         setCurrentUser(null);
         setVocabItems([]);
@@ -70,6 +80,18 @@ const App: React.FC = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [state]);
+
+  // Persist current page so app resumes where left off
+  useEffect(() => {
+    if (currentUser && PERSISTABLE_STATES.includes(state)) {
+      localStorage.setItem(`swb_state_${currentUser.id}`, state);
+    }
+  }, [state, currentUser]);
+
+  // Load favorites when user changes
+  useEffect(() => {
+    setFavoriteIds(currentUser ? getFavoriteIds(currentUser.id) : new Set());
+  }, [currentUser?.id]);
 
   const fetchAllWords = async () => {
     try {
@@ -154,11 +176,28 @@ const App: React.FC = () => {
     return shuffled;
   };
 
-  const generateLocalQuiz = (items: VocabularyItem[]): QuizQuestion[] => {
-    const shuffled = [...items].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, Math.min(20, shuffled.length));
+  const generateLocalQuiz = (items: VocabularyItem[], userId: string = ''): QuizQuestion[] => {
+    // Build weighted pool: harder words (high difficulty) appear more often
+    const pool: VocabularyItem[] = [];
+    items.forEach(item => {
+      const diff = getWordDifficulty(userId, item.id);
+      for (let i = 0; i < diff; i++) pool.push(item);
+    });
+    const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+
+    // Deduplicate into selected (up to 20)
+    const seen = new Set<string>();
+    const selected: VocabularyItem[] = [];
+    for (const item of shuffledPool) {
+      if (!seen.has(item.id) && selected.length < 20) { seen.add(item.id); selected.push(item); }
+    }
+    // Fill remaining randomly if pool was small
+    items.filter(i => !seen.has(i.id)).sort(() => Math.random() - 0.5)
+      .slice(0, 20 - selected.length).forEach(i => selected.push(i));
+
+    const shuffledAll = [...items].sort(() => Math.random() - 0.5);
     return selected.map(item => {
-      const others = shuffled.filter(w => w.id !== item.id).slice(0, 4);
+      const others = shuffledAll.filter(w => w.id !== item.id).slice(0, 4);
       const correctOpt: QuizOption = { text: item.word, meaning: item.meaning, wordTypeEn: item.wordTypeEn, wordTypeTr: item.wordTypeTr };
       const wrongOpts: QuizOption[] = others.map(w => ({ text: w.word, meaning: w.meaning, wordTypeEn: w.wordTypeEn, wordTypeTr: w.wordTypeTr }));
       const options = [correctOpt, ...wrongOpts].sort(() => Math.random() - 0.5);
@@ -179,7 +218,7 @@ const App: React.FC = () => {
       setError("Test için havuzda en az 5 kelime olmalı!");
       return;
     }
-    const questions = generateLocalQuiz(vocabItems);
+    const questions = generateLocalQuiz(vocabItems, currentUser?.id || '');
     setQuizQuestions(questions);
     setState('quiz');
   };
@@ -255,6 +294,12 @@ const App: React.FC = () => {
     }
   };
 
+  const toggleFavoriteWord = (wordId: string) => {
+    if (!currentUser) return;
+    toggleFavorite(currentUser.id, wordId);
+    setFavoriteIds(getFavoriteIds(currentUser.id));
+  };
+
   const deleteWord = async (item: VocabularyItem) => {
     if (!currentUser || item.userId !== currentUser.id) return;
     try {
@@ -271,12 +316,16 @@ const App: React.FC = () => {
     }
   };
 
-  const filteredVocab = searchTerm.trim() === ''
-    ? vocabItems
-    : vocabItems.filter(item =>
-        item.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.meaning.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  const filteredVocab = (() => {
+    let list = searchTerm.trim() === ''
+      ? vocabItems
+      : vocabItems.filter(item =>
+          item.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.meaning.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    if (showFavoritesOnly) list = list.filter(item => favoriteIds.has(item.id));
+    return list;
+  })();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fdfbf7]">
@@ -416,7 +465,8 @@ const App: React.FC = () => {
           <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="text-2xl sm:text-3xl font-black text-slate-800">Global Kelime Havuzu</h2>
-              <div className="relative w-full md:w-96">
+              <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="relative flex-1 md:w-96">
                 <input
                   type="text"
                   placeholder="Kelime veya anlam ara..."
@@ -437,6 +487,15 @@ const App: React.FC = () => {
                   </button>
                 )}
               </div>
+              <button
+                onClick={() => setShowFavoritesOnly(v => !v)}
+                className={`flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all border-2 whitespace-nowrap ${showFavoritesOnly ? 'bg-red-50 border-red-200 text-red-500' : 'bg-white border-slate-100 text-slate-400 hover:border-red-200 hover:text-red-400'}`}
+                title="Favori filtresi"
+              >
+                <span>{showFavoritesOnly ? '❤️' : '🤍'}</span>
+                <span className="hidden sm:inline">{showFavoritesOnly ? 'Favoriler' : 'Favoriler'}</span>
+              </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -451,6 +510,14 @@ const App: React.FC = () => {
                         )}
                       </div>
                       <div className="flex items-center space-x-1">
+                        {/* Favorite */}
+                        <button
+                          onClick={() => toggleFavoriteWord(item.id)}
+                          className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-red-50 transition-colors border border-slate-100"
+                          title={favoriteIds.has(item.id) ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
+                        >
+                          <span className="text-sm leading-none">{favoriteIds.has(item.id) ? '❤️' : '🤍'}</span>
+                        </button>
                         {/* Edit/Delete — only for word owner */}
                         {currentUser && item.userId === currentUser.id && (
                           <div className="flex items-center space-x-1 mr-1">
@@ -541,8 +608,31 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {state === 'learning' && <Flashcards items={shuffleArray(vocabItems).slice(0, 40)} onComplete={async (total) => { await logActivity('flashcards', total, total); setState('selection'); }} />}
-        {state === 'quiz' && <Quiz questions={quizQuestions} onClose={async (score, total) => { await logActivity('quiz', score, total); setState('selection'); }} />}
+        {state === 'learning' && <Flashcards
+          items={(() => {
+            const uid = currentUser?.id || '';
+            return shuffleArray(vocabItems)
+              .slice(0, 40)
+              .sort((a, b) => getWordDifficulty(uid, b.id) - getWordDifficulty(uid, a.id));
+          })()}
+          onComplete={async (total) => { await logActivity('flashcards', total, total); setState('selection'); }}
+        />}
+        {state === 'quiz' && <Quiz questions={quizQuestions} onClose={async (score, total, wrongWordStrings) => {
+          await logActivity('quiz', score, total);
+          if (currentUser) {
+            wrongWordStrings.forEach(wordStr => {
+              const item = vocabItems.find(v => v.word === wordStr);
+              if (item) updateWordDifficulty(currentUser.id, item.id, false);
+            });
+            quizQuestions
+              .filter(q => !wrongWordStrings.includes(q.word))
+              .forEach(q => {
+                const item = vocabItems.find(v => v.word === q.word);
+                if (item) updateWordDifficulty(currentUser.id, item.id, true);
+              });
+          }
+          setState('selection');
+        }} />}
         {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} onClose={async (score, total) => { await logActivity('writing', score, total); setState('selection'); }} />}
         {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} onBack={() => setState('selection')} />}
         {state === 'tutor' && <TutorView onBack={() => setState('selection')} />}

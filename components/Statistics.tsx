@@ -18,59 +18,41 @@ interface ActivityLog {
 
 const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack }) => {
   const [loading, setLoading] = useState(true);
-  const [wordStats, setWordStats] = useState({
-    total: 0,
-    addedByMe: 0
-  });
+  const [wordStats, setWordStats] = useState({ total: 0, addedByMe: 0 });
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
   useEffect(() => {
-    if (userId) {
-      fetchData();
-    }
+    if (userId) fetchData();
   }, [userId, vocabItems]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Kesin toplam sayı sorgusu
       const { count: totalCount } = await supabase
         .from('vocabulary')
         .select('*', { count: 'exact', head: true });
-      
-      // 2. Kullanıcının ekledikleri için limitleri aşan döngülü çekim
+
       let addedCount = 0;
-      let from = 0;
-      let to = 999;
-      let finished = false;
+      let from = 0, to = 999, finished = false;
       while (!finished) {
-        const { data } = await supabase
-          .from('vocabulary')
-          .select('id')
-          .eq('user_id', userId)
-          .range(from, to);
+        const { data } = await supabase.from('vocabulary').select('id').eq('user_id', userId).range(from, to);
         if (data && data.length > 0) {
           addedCount += data.length;
           if (data.length < 1000) finished = true;
           else { from += 1000; to += 1000; }
         } else finished = true;
       }
-        
-      setWordStats({
-        total: totalCount || vocabItems.length,
-        addedByMe: addedCount
-      });
 
-      // 3. Kullanıcı aktiviteleri
+      setWordStats({ total: totalCount || vocabItems.length, addedByMe: addedCount });
+
       const { data: logData, error: logError } = await supabase
         .from('user_activities')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
-      
+
       if (logError) throw logError;
       if (logData) setActivityLogs(logData);
-
     } catch (err) {
       console.error('İstatistikler getirilirken hata oluştu:', err);
     } finally {
@@ -89,13 +71,42 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack }) =
     const logs = activityLogs.filter(l => l.activity_type === type);
     const totalCorrect = logs.reduce((acc, curr) => acc + curr.score, 0);
     const totalItems = logs.reduce((acc, curr) => acc + curr.total_items, 0);
-    const totalWrong = totalItems - totalCorrect;
-    return { totalCorrect, totalWrong };
+    return { totalCorrect, totalWrong: totalItems - totalCorrect };
   };
+
+  const calculateStreak = (): number => {
+    if (activityLogs.length === 0) return 0;
+    const activeDays = new Set<string>();
+    activityLogs.forEach(log => {
+      activeDays.add(new Date(log.created_at).toISOString().split('T')[0]);
+    });
+    let streak = 0;
+    const checkDate = new Date();
+    checkDate.setHours(0, 0, 0, 0);
+    while (true) {
+      const dateStr = checkDate.toISOString().split('T')[0];
+      if (activeDays.has(dateStr)) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else break;
+    }
+    return streak;
+  };
+
+  const todayActivityCount = (): number => {
+    const today = new Date().toISOString().split('T')[0];
+    return activityLogs.filter(log => log.created_at.startsWith(today)).length;
+  };
+
+  const totalActivities = activityLogs.length;
+  const streak = calculateStreak();
+  const todayCount = todayActivityCount();
 
   const quizDetails = getDetails('quiz');
   const writingDetails = getDetails('writing');
-  const flashcardCount = activityLogs.filter(l => l.activity_type === 'flashcards').reduce((acc, curr) => acc + curr.total_items, 0);
+  const flashcardCount = activityLogs
+    .filter(l => l.activity_type === 'flashcards')
+    .reduce((acc, curr) => acc + curr.total_items, 0);
 
   const radius = 45;
   const circumference = 2 * Math.PI * radius;
@@ -107,10 +118,7 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack }) =
           <h2 className="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight">İstatistikler 📊</h2>
           <p className="text-slate-400 font-bold text-xs sm:text-lg uppercase tracking-[0.2em] sm:tracking-[0.3em]">Senin Başarı Panelin</p>
         </div>
-        <button
-          onClick={onBack}
-          className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm"
-        >
+        <button onClick={onBack} className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm">
           ← Geri Dön
         </button>
       </div>
@@ -121,34 +129,74 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack }) =
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
+
+          {/* Global pool */}
           <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-2xl text-white flex flex-col items-center text-center col-span-1 md:col-span-3">
             <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-widest mb-4 sm:mb-6 opacity-60">Global Havuz Durumu</h3>
             <div className="flex items-center space-x-8 sm:space-x-24">
-               <div className="text-center">
-                 <span className="text-4xl sm:text-7xl font-black block">{wordStats.total.toLocaleString('tr-TR')}</span>
-                 <span className="text-[10px] sm:text-xs font-bold uppercase opacity-60">Toplam Kelime</span>
-               </div>
-               <div className="h-10 sm:h-16 w-px bg-white/20"></div>
-               <div className="text-center">
-                 <span className="text-4xl sm:text-7xl font-black block text-orange-400">{wordStats.addedByMe.toLocaleString('tr-TR')}</span>
-                 <span className="text-[10px] sm:text-xs font-bold uppercase opacity-60">Senin Katkın</span>
-               </div>
+              <div className="text-center">
+                <span className="text-4xl sm:text-7xl font-black block">{wordStats.total.toLocaleString('tr-TR')}</span>
+                <span className="text-[10px] sm:text-xs font-bold uppercase opacity-60">Toplam Kelime</span>
+              </div>
+              <div className="h-10 sm:h-16 w-px bg-white/20"></div>
+              <div className="text-center">
+                <span className="text-4xl sm:text-7xl font-black block text-orange-400">{wordStats.addedByMe.toLocaleString('tr-TR')}</span>
+                <span className="text-[10px] sm:text-xs font-bold uppercase opacity-60">Senin Katkın</span>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-lg border border-slate-100 flex flex-col items-center text-center h-[300px] sm:h-[450px]">
+          {/* Streak + Daily */}
+          <div className="col-span-1 md:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-orange-400 to-red-500 p-5 sm:p-8 rounded-[2rem] shadow-lg text-white text-center">
+              <div className="text-3xl sm:text-4xl mb-2">🔥</div>
+              <span className="text-3xl sm:text-5xl font-black block">{streak}</span>
+              <span className="text-[10px] sm:text-xs font-bold uppercase opacity-80 mt-1 block">Günlük Seri</span>
+              <span className="text-[9px] opacity-60 font-bold">
+                {streak === 0 ? 'Bugün başla!' : streak === 1 ? 'Harika başlangıç' : `${streak} gün üst üste`}
+              </span>
+            </div>
+            <div className="bg-gradient-to-br from-emerald-400 to-teal-500 p-5 sm:p-8 rounded-[2rem] shadow-lg text-white text-center">
+              <div className="text-3xl sm:text-4xl mb-2">📅</div>
+              <span className="text-3xl sm:text-5xl font-black block">{todayCount}</span>
+              <span className="text-[10px] sm:text-xs font-bold uppercase opacity-80 mt-1 block">Bugünkü Aktivite</span>
+              <span className="text-[9px] opacity-60 font-bold">
+                {todayCount === 0 ? 'Henüz çalışmadın' : todayCount >= 3 ? 'Süper gün! 🚀' : 'Devam et!'}
+              </span>
+            </div>
+            <div className="bg-gradient-to-br from-violet-400 to-purple-600 p-5 sm:p-8 rounded-[2rem] shadow-lg text-white text-center">
+              <div className="text-3xl sm:text-4xl mb-2">⚡</div>
+              <span className="text-3xl sm:text-5xl font-black block">{totalActivities}</span>
+              <span className="text-[10px] sm:text-xs font-bold uppercase opacity-80 mt-1 block">Toplam Aktivite</span>
+              <span className="text-[9px] opacity-60 font-bold">Tüm zamanlar</span>
+            </div>
+            <div className="bg-gradient-to-br from-blue-400 to-cyan-500 p-5 sm:p-8 rounded-[2rem] shadow-lg text-white text-center">
+              <div className="text-3xl sm:text-4xl mb-2">🎯</div>
+              <span className="text-3xl sm:text-5xl font-black block">
+                {Math.round(((quizDetails.totalCorrect + writingDetails.totalCorrect) /
+                  Math.max(1, quizDetails.totalCorrect + quizDetails.totalWrong + writingDetails.totalCorrect + writingDetails.totalWrong)) * 100)}%
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold uppercase opacity-80 mt-1 block">Genel Başarı</span>
+              <span className="text-[9px] opacity-60 font-bold">Quiz + Yazma</span>
+            </div>
+          </div>
+
+          {/* Flashcard count */}
+          <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-lg border border-slate-100 flex flex-col items-center text-center h-[260px] sm:h-[380px]">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl shrink-0">📚</div>
-            <h4 className="font-black text-slate-800 mt-2 sm:mt-4 shrink-0 text-sm sm:text-base">Flashcards</h4>
+            <h4 className="font-black text-slate-800 mt-2 sm:mt-4 shrink-0 text-sm sm:text-base">Flashcard Görüntüleme</h4>
             <div className="flex-1 flex items-center justify-center w-full">
               <div className="text-5xl sm:text-7xl font-black text-purple-600">{flashcardCount.toLocaleString('tr-TR')}</div>
             </div>
+            <span className="text-[10px] sm:text-xs font-bold text-purple-300 uppercase">kart</span>
           </div>
 
-          <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-lg border border-slate-100 flex flex-col items-center text-center h-[300px] sm:h-[450px]">
+          {/* Quiz rate */}
+          <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-lg border border-slate-100 flex flex-col items-center text-center h-[260px] sm:h-[380px]">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl shrink-0">🎓</div>
             <h4 className="font-black text-slate-800 mt-2 sm:mt-4 shrink-0 text-sm sm:text-base">Test Başarı Oranı</h4>
             <div className="flex-1 flex items-center justify-center w-full">
-               <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center">
+              <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
                   <circle cx="60" cy="60" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100" />
                   <circle cx="60" cy="60" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" strokeDasharray={circumference} strokeDashoffset={circumference - (circumference * calculatePerformance('quiz')) / 100} strokeLinecap="round" className="text-green-500 transition-all duration-1000 ease-out" />
@@ -161,11 +209,12 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack }) =
             </div>
           </div>
 
-          <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-lg border border-slate-100 flex flex-col items-center text-center h-[300px] sm:h-[450px]">
+          {/* Writing rate */}
+          <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-lg border border-slate-100 flex flex-col items-center text-center h-[260px] sm:h-[380px]">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl shrink-0">✍️</div>
             <h4 className="font-black text-slate-800 mt-2 sm:mt-4 shrink-0 text-sm sm:text-base">Yazma Doğruluğu</h4>
             <div className="flex-1 flex items-center justify-center w-full">
-               <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center">
+              <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
                   <circle cx="60" cy="60" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100" />
                   <circle cx="60" cy="60" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" strokeDasharray={circumference} strokeDashoffset={circumference - (circumference * calculatePerformance('writing')) / 100} strokeLinecap="round" className="text-blue-500 transition-all duration-1000 ease-out" />
@@ -177,6 +226,7 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack }) =
               <span className="text-[10px] sm:text-xs font-black text-blue-700">{writingDetails.totalCorrect.toLocaleString('tr-TR')} ✓</span>
             </div>
           </div>
+
         </div>
       )}
     </div>

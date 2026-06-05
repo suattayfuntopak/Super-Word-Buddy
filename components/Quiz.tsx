@@ -5,7 +5,7 @@ import { speak } from '../utils/speak';
 
 interface QuizProps {
   questions: QuizQuestion[];
-  onClose: (score: number, total: number) => void;
+  onClose: (score: number, total: number, wrongWordStrings: string[]) => void;
 }
 
 const Quiz: React.FC<QuizProps> = ({ questions, onClose }) => {
@@ -15,6 +15,7 @@ const Quiz: React.FC<QuizProps> = ({ questions, onClose }) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [activeMeaningIdx, setActiveMeaningIdx] = useState<number | null>(null);
+  const [wrongWords, setWrongWords] = useState<string[]>([]);
 
   const isCorrectAnswer = (optionText: string, correct: string) =>
     optionText.trim().toLowerCase() === correct.trim().toLowerCase();
@@ -25,6 +26,8 @@ const Quiz: React.FC<QuizProps> = ({ questions, onClose }) => {
     setIsAnswered(true);
     if (isCorrectAnswer(option.text, questions[currentIndex].correctAnswer)) {
       setScore(s => s + 1);
+    } else {
+      setWrongWords(prev => [...prev, questions[currentIndex].word]);
     }
   };
 
@@ -88,17 +91,65 @@ const Quiz: React.FC<QuizProps> = ({ questions, onClose }) => {
     if (percentage === 100) { message = "Mükemmelsin! Şampiyon! 🏆"; icon = "🦁"; }
     else if (percentage < 50) { message = "Biraz daha çalışalım mı? 🧸"; icon = "📚"; }
 
+    // Build wrong word details from questions data
+    const wrongWordDetails = wrongWords.map(wordStr => {
+      const q = questions.find(q => q.word === wordStr);
+      if (!q) return null;
+      const correctOpt = q.options.find(o =>
+        o.text.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase()
+      );
+      return { word: q.word, meaning: correctOpt?.meaning || q.correctAnswer, wordTypeTr: correctOpt?.wordTypeTr || '' };
+    }).filter((item): item is { word: string; meaning: string; wordTypeTr: string } => item !== null);
+
     return (
-      <div className="bg-white p-8 sm:p-16 rounded-[2.5rem] sm:rounded-[4rem] shadow-2xl text-center max-w-lg mx-auto border-4 border-indigo-50 animate-in zoom-in-95 duration-500">
+      <div className="bg-white p-6 sm:p-16 rounded-[2.5rem] sm:rounded-[4rem] shadow-2xl text-center max-w-lg mx-auto border-4 border-indigo-50 animate-in zoom-in-95 duration-500">
         <div className="text-5xl sm:text-7xl mb-6 sm:mb-8">{icon}</div>
         <h2 className="text-2xl sm:text-4xl font-black text-slate-800 mb-4 tracking-tight">{message}</h2>
         <p className="text-slate-400 text-base sm:text-xl font-medium mb-8 sm:mb-10">Havuzdaki kelimeleri iyice kavramışsın!</p>
-        <div className="bg-indigo-50 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] mb-8 sm:mb-12">
+        <div className="bg-indigo-50 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] mb-6 sm:mb-8">
           <span className="text-5xl sm:text-7xl font-black text-indigo-500">%{percentage}</span>
           <p className="text-indigo-400 font-bold mt-2 uppercase tracking-widest text-sm sm:text-base">Başarı Oranın</p>
         </div>
+
+        {wrongWordDetails.length > 0 && (
+          <div className="mb-6 sm:mb-8 text-left">
+            <p className="text-[10px] sm:text-xs font-black text-slate-300 uppercase tracking-widest mb-3">
+              Gözden Geçirilecekler ({wrongWordDetails.length})
+            </p>
+            <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+              {wrongWordDetails.map((item, i) => (
+                <div key={i} className="flex items-center justify-between bg-red-50 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-red-100">
+                  <div className="flex-1 min-w-0 mr-2">
+                    <span className="font-black text-slate-800 text-sm sm:text-base">{item.word}</span>
+                    {item.wordTypeTr && (
+                      <span className="ml-1 text-[10px] text-slate-400 italic">({item.wordTypeTr})</span>
+                    )}
+                    <span className="ml-2 text-xs sm:text-sm text-indigo-600 font-bold truncate">{item.meaning}</span>
+                  </div>
+                  <div className="flex space-x-1 shrink-0">
+                    <button
+                      onClick={() => speak(item.word, 'en-GB')}
+                      className="w-6 h-6 rounded-md overflow-hidden border border-slate-200"
+                      title="Listen UK"
+                    >
+                      <img src="https://flagcdn.com/w40/gb.png" className="w-full h-full object-cover" alt="UK" />
+                    </button>
+                    <button
+                      onClick={() => speak(item.word, 'en-US')}
+                      className="w-6 h-6 rounded-md overflow-hidden border border-slate-200"
+                      title="Listen US"
+                    >
+                      <img src="https://flagcdn.com/w40/us.png" className="w-full h-full object-cover" alt="US" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button
-          onClick={() => onClose(score, questions.length)}
+          onClick={() => onClose(score, questions.length, wrongWords)}
           className="w-full py-4 sm:py-6 bg-indigo-600 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
         >
           Havuz Seçimine Dön
