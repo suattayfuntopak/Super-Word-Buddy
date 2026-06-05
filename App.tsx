@@ -5,10 +5,10 @@ import { analyzeVocabulary } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 import { speak } from './utils/speak';
 import { getWordDifficulty, updateWordDifficulty } from './utils/wordDifficulty';
-import { getFavoriteIds, toggleFavorite } from './utils/favorites';
+import { getFavoriteIds, loadFavoritesFromDB, toggleFavoriteDB } from './utils/favorites';
 import { Theme, getStoredTheme, storeTheme, applyTheme } from './utils/theme';
 import { Lang, getStoredLang, storeLang, translations } from './utils/i18n';
-import { getTagsMap, setWordTags, getAllUserTags } from './utils/wordTags';
+import { getTagsMap, setWordTagsDB, getAllUserTags, loadTagsFromDB } from './utils/wordTags';
 import { getDailyGoal, setDailyGoal, sendGoalNotification } from './utils/dailyGoal';
 import FileUpload from './components/FileUpload';
 import Flashcards from './components/Flashcards';
@@ -24,6 +24,7 @@ import UserMenu from './components/UserMenu';
 
 const PERSISTABLE_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
 const HISTORY_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
+const ACTIVITY_STATES: AppState[] = ['learning', 'quiz', 'writing', 'games', 'tutor'];
 const PRESET_TAGS = ['IELTS', 'TOEFL', 'Academic', 'Business', 'Chapter 1', 'Chapter 2', 'Daily', 'Advanced'];
 
 const App: React.FC = () => {
@@ -56,6 +57,10 @@ const App: React.FC = () => {
 
   // Favorites mode modal
   const [showFavoritesModeModal, setShowFavoritesModeModal] = useState(false);
+
+  // Header/footer visibility (hide on scroll down / activity states)
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollYRef = useRef(0);
 
   const t = translations[lang];
 
@@ -114,7 +119,23 @@ const App: React.FC = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setHeaderVisible(!ACTIVITY_STATES.includes(state));
+    lastScrollYRef.current = 0;
   }, [state]);
+
+  // Hide header+footer on scroll down, reveal on scroll up
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const diff = currentY - lastScrollYRef.current;
+      if (Math.abs(diff) < 5) return;
+      if (diff > 0 && currentY > 80) setHeaderVisible(false);
+      else if (diff < 0) setHeaderVisible(true);
+      lastScrollYRef.current = currentY;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Push state to browser history for back/forward button support
   useEffect(() => {
@@ -154,12 +175,16 @@ const App: React.FC = () => {
   }, [state, vocabItems.length]);
 
   useEffect(() => {
-    setFavoriteIds(currentUser ? getFavoriteIds(currentUser.id) : new Set());
+    if (currentUser) {
+      loadFavoritesFromDB(currentUser.id).then(ids => setFavoriteIds(ids));
+    } else {
+      setFavoriteIds(new Set());
+    }
   }, [currentUser?.id]);
 
   useEffect(() => {
     if (currentUser) {
-      setWordTagsMap(getTagsMap(currentUser.id));
+      loadTagsFromDB(currentUser.id).then(map => setWordTagsMap(map));
     } else {
       setWordTagsMap({});
     }
@@ -223,10 +248,17 @@ const App: React.FC = () => {
         score,
         total_items: total
       }]);
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42P01') {
+          setError(lang === 'tr'
+            ? 'user_activities tablosu bulunamadı — İstatistikler sayfasını açıp kurulum SQL\'ini çalıştırın.'
+            : 'user_activities table missing — open Statistics and run the setup SQL.');
+        }
+        throw error;
+      }
       await checkDailyGoal();
-    } catch (e) {
-      console.error("Aktivite kaydedilemedi", e);
+    } catch (e: any) {
+      console.error('Aktivite kaydedilemedi:', e?.message || e);
     }
   };
 
@@ -385,9 +417,9 @@ const App: React.FC = () => {
     }
   };
 
-  const toggleFavoriteWord = (wordId: string) => {
+  const toggleFavoriteWord = async (wordId: string) => {
     if (!currentUser) return;
-    toggleFavorite(currentUser.id, wordId);
+    await toggleFavoriteDB(currentUser.id, wordId);
     setFavoriteIds(getFavoriteIds(currentUser.id));
   };
 
@@ -403,19 +435,19 @@ const App: React.FC = () => {
     }
   };
 
-  const addTagToWord = (wordId: string, tag: string) => {
+  const addTagToWord = async (wordId: string, tag: string) => {
     if (!currentUser || !tag.trim()) return;
-    const current = wordTagsMap[wordId] || [];
-    if (current.includes(tag)) return;
-    const updated = [...current, tag];
-    setWordTags(currentUser.id, wordId, updated);
+    const currTags = wordTagsMap[wordId] || [];
+    if (currTags.includes(tag)) return;
+    const updated = [...currTags, tag];
+    await setWordTagsDB(currentUser.id, wordId, updated);
     setWordTagsMap(getTagsMap(currentUser.id));
   };
 
-  const removeTagFromWord = (wordId: string, tag: string) => {
+  const removeTagFromWord = async (wordId: string, tag: string) => {
     if (!currentUser) return;
-    const updated = (wordTagsMap[wordId] || []).filter(t => t !== tag);
-    setWordTags(currentUser.id, wordId, updated);
+    const updated = (wordTagsMap[wordId] || []).filter(tg => tg !== tag);
+    await setWordTagsDB(currentUser.id, wordId, updated);
     setWordTagsMap(getTagsMap(currentUser.id));
   };
 
@@ -453,7 +485,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#fdfbf7]">
       {/* Header */}
-      <header className="bg-white/95 backdrop-blur-md sticky top-0 z-20 py-3 sm:py-5 border-b border-slate-200 shadow-sm">
+      <header className={`bg-white/95 backdrop-blur-md sticky top-0 z-20 py-3 sm:py-5 border-b border-slate-200 shadow-sm transition-transform duration-300 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex justify-between items-center">
           <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onClick={() => currentUser ? setState('selection') : setState('home')}>
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-600 rounded-lg sm:rounded-xl flex items-center justify-center text-white text-lg sm:text-xl shadow-lg">🚀</div>
@@ -834,13 +866,14 @@ const App: React.FC = () => {
           }
           setState('selection');
         }} />}
-        {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} onClose={async (score, total) => { await logActivity('writing', score, total); setState('selection'); }} />}
+        {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} lang={lang} onClose={async (score, total) => { await logActivity('writing', score, total); setState('selection'); }} />}
         {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} onBack={() => setState('selection')} dailyGoal={dailyGoalValue} lang={lang} />}
         {state === 'tutor' && <TutorView onBack={() => setState('selection')} />}
-        {state === 'games' && <GamesHub vocabItems={vocabItems} onBack={() => setState('selection')} />}
+        {state === 'games' && <GamesHub vocabItems={vocabItems} lang={lang} onBack={() => setState('selection')} />}
       </main>
 
-      <footer className="mt-4 pt-0 pb-2 bg-white border-t border-slate-100 flex flex-col items-center space-y-1">
+      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${headerVisible ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'}`}>
+      <footer className="pt-0 pb-2 bg-white border-t border-slate-100 flex flex-col items-center space-y-1">
         <div className="flex items-center justify-center space-x-4 px-6 text-center">
           <p className="text-indigo-600 font-bold italic text-sm sm:text-base">{t.coffeeText}</p>
           <a href="https://buymeacoffee.com/suattayfuntopak" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 bg-[#FFDD00] text-black px-4 py-2 rounded-xl font-bold hover:scale-105 transition-all shadow-lg hover:shadow-yellow-100">
@@ -853,6 +886,7 @@ const App: React.FC = () => {
         </div>
       </footer>
 
+      </div>
       <CookieConsent />
       {isModalOpen && <AddWordModal onAdd={addOrUpdateWord} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} initialData={editingItem} />}
 

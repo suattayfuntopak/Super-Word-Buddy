@@ -329,6 +329,75 @@
 |-------|-------|
 | `utils/wordDifficulty.ts` | YENİ — localStorage spaced repetition |
 | `utils/favorites.ts` | YENİ — localStorage favori sistemi |
+
+---
+
+## Güncelleme — 2026-06-05 (6. Oturum — Dark Mode Düzeltme, Supabase Senkron, Çeviriler, Header/Footer Akıllı Gizleme)
+
+### 37. Dark Mode Ana Hata Düzeltildi (Kritik)
+- **Root Cause:** `index.html` dark mode CSS'inde `bg-\[#fdfbf7\]` seçicisindeki `#` karakteri escape edilmemişti. Tarayıcı bunu CSS ID seçici olarak yorumluyordu, kural hiç çalışmıyordu.
+- **Sonuç:** Uygulamanın ana arka planı (`#fdfbf7` krem rengi) dark modda değişmiyordu; bu yüzden `text-slate-800` üzerine uygulanan `#e2e8f0` (beyaz) override'ı krem arka plan üzerinde görünmez hale geliyordu.
+- **Fix:** `bg-\[#fdfbf7\]` → `bg-\[\#fdfbf7\]` (doğru escape).
+- **İkinci Fix:** `text-slate-300 { color: #334155 }` ve `text-slate-400 { color: #475569 }` override'ları kaldırıldı — bu koyu renkler dark bg üzerinde görünmez hale geliyordu. `text-slate-500` da `#94a3b8`'e yükseltildi.
+- **Etkilenen ve düzelen alanlar:** Play Game başlığı, Global Kelime Havuzu başlığı, Quiz klavye ipucu, Flashcards flip ipucu, Quiz A/B/C/D/E şık etiketleri, WordWriting kelime türü etiketleri ve Harf Sil butonu, kelime listesindeki (NOUN) etiketleri.
+
+### 38. İstatistikler Supabase Hata Yönetimi
+- `user_activities` tablosu yoksa (code `42P01`) Statistics sayfasında **kullanıcıya görünen uyarı banner**'ı gösteriliyor.
+- Banner içinde: SQL kurulum kodu görüntüleme butonu + 📋 panoya kopyala.
+- `logActivity` fonksiyonu da tablonun olmadığını tespit edince kullanıcıya `setError` ile görünür hata mesajı gösteriyor.
+
+### 39. Supabase Senkronizasyonu — Favoriler & Etiketler (Öneri B)
+- `utils/favorites.ts`: `loadFavoritesFromDB` (login'de DB'den yükle + localStorage cache) ve `toggleFavoriteDB` (localStorage'a anında yaz, arkaplanda Supabase'e sync) eklendi.
+- `utils/wordTags.ts`: `loadTagsFromDB` ve `setWordTagsDB` (aynı optimistic pattern) eklendi.
+- `App.tsx`: login'de `loadFavoritesFromDB` / `loadTagsFromDB` çağrısı; toggle/add/remove operasyonları async DB versiyonlarını kullanıyor.
+- Tablo yoksa localStorage'a fallback — uygulama her koşulda çalışıyor.
+- **Gerekli SQL:** `supabase/schema.sql` dosyası oluşturuldu — Supabase SQL editöründe bir kez çalıştırılmalı.
+
+### 40. En Zor Kelimeler Listesi (Öneri C) — İstatistikler
+- `utils/wordDifficulty.ts`'e `getDifficultiesMap` eklendi.
+- Statistics sayfasında "En Zor Kelimeler / Hardest Words" bölümü eklendi: spaced repetition puanı ≥ 4 olan kelimeler, yüksekten düşüğe sıralı, max 10, 🔥 ateş ikonu göstergesiyle.
+- TR/EN desteği (sıfır veri durumu, başlık, altyazı).
+
+### 41. TR/EN Çeviri — WordWriting (Öneri A)
+- `lang?: 'tr' | 'en'` prop eklendi.
+- Çevrilen metinler: `TÜRKÇE ANLAMI / TURKISH MEANING`, `Harf Sil / Delete`, `Cevabı Gör ✨ / Reveal ✨`, `Kampı Bitir ✨ / Finish Camp ✨`, `Sıradaki Kelime 🚀 / Next Word 🚀`, `Kapat ✖ / Close ✖`.
+- Dark mode uyumluluğu: `text-slate-200` → `text-slate-300` (kullanılmış harf butonları) düzeltildi.
+
+### 42. TR/EN Çeviri — GamesHub (Öneri A)
+- `lang?: 'tr' | 'en'` prop eklendi; tüm alt oyunlara (`WordShooterGame`, `MatchGame`, `ClozeGame`) aktarılıyor.
+- Merkezi `T = { tr, en }` objesi: menü başlıkları, oyun adları, açıklamalar, geri butonu, oyun içi etiketler (SKOR/SCORE, SORU/QUESTION), bitiş ekranı metinleri, hata metinleri.
+
+### 43. Header & Footer Akıllı Gizleme (btw — Scroll + Aktivite Bazlı)
+- **Aktivite girişinde otomatik gizleme:** `learning`, `quiz`, `writing`, `games`, `tutor` state'lerine girilince header ve footer kaybolur.
+- **Scroll-based:** Aşağı kaydırma (> 80px) → gizle; yukarı kaydırma → göster.
+- **Animasyon:** Header `transition-transform -translate-y-full` (yukarı kayar); footer `max-h-0 opacity-0` (aşağıya çekilir); her ikisi `duration-300 ease-in-out`.
+- State değişiminde scroll pozisyonu ve görünürlük state sıfırlanıyor.
+
+---
+
+## Güncellenen Dosyalar (6. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `index.html` | GÜNCELLENDİ — dark mode CSS escape düzeltmesi, slate-300/400 override kaldırıldı |
+| `utils/wordDifficulty.ts` | GÜNCELLENDİ — `getDifficultiesMap` eklendi |
+| `utils/favorites.ts` | GÜNCELLENDİ — Supabase sync: `loadFavoritesFromDB`, `toggleFavoriteDB` |
+| `utils/wordTags.ts` | GÜNCELLENDİ — Supabase sync: `loadTagsFromDB`, `setWordTagsDB` |
+| `components/Statistics.tsx` | GÜNCELLENDİ — hata yönetimi, SQL kurulum banner, en zor kelimeler bölümü |
+| `components/WordWriting.tsx` | GÜNCELLENDİ — `lang` prop, tam TR/EN çeviri |
+| `components/GamesHub.tsx` | GÜNCELLENDİ — `lang` prop, tüm alt oyunlar tam TR/EN çeviri |
+| `App.tsx` | GÜNCELLENDİ — header/footer akıllı gizleme, async favori/etiket, logActivity hata görünürlüğü |
+| `supabase/schema.sql` | YENİ — tüm tablo tanımları ve RLS politikaları |
+
+---
+
+## Önerilen Sonraki Adımlar
+
+1. **Supabase kurulumu:** `supabase/schema.sql` dosyasını Supabase SQL Editörü'nde bir kez çalıştır — `user_activities`, `user_favorites`, `user_word_tags` tabloları oluşur.
+2. **Profil fotoğrafı / avatar:** Kullanıcı menüsüne avatarlı profil düzenleme eklenebilir (Supabase Storage).
+3. **Kelime seti paylaşımı:** Seçilmiş bir etiket grubunu (ör. "IELTS") link olarak başkalarıyla paylaşma.
+4. **Öğrenme takvimi:** Haftanın günlerine göre hedef belirleme (ör. hafta içi 5, hafta sonu 2).
+5. **Progress export:** İstatistikleri PDF/CSV olarak dışa aktarma.
 | `public/icons/icon-192.png` | YENİ — PWA ikonu |
 | `public/icons/icon-512.png` | YENİ — PWA ikonu |
 | `public/icons/apple-touch-icon.png` | YENİ — iOS ikonu |

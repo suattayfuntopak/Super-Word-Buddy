@@ -22,3 +22,6 @@ export const updateWordDifficulty = (userId: string, wordId: string, wasCorrect:
   map[wordId] = wasCorrect ? Math.max(1, current - 1) : Math.min(5, current + 2);
   localStorage.setItem(storageKey(userId), JSON.stringify(map));
 };
+
+export const getDifficultiesMap = (userId: string): Record<string, number> =>
+  userId ? getMap(userId) : {};

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { VocabularyItem } from '../types';
 import type { Lang } from '../utils/i18n';
+import { getDifficultiesMap } from '../utils/wordDifficulty';
 
 interface StatisticsProps {
   userId: string;
@@ -50,6 +51,13 @@ const ST = {
     trendTitle: '7 Günlük Aktivite',
     today: 'Bugün',
     noActivity: 'Aktivite yok',
+    hardWords: 'En Zor Kelimeler',
+    hardWordsSub: 'Spaced repetition puanı en yüksek',
+    hardWordsNone: 'Henüz zorluk verisi yok — quiz ve yazma alıştırmaları yapınca burada görünür.',
+    difficulty: 'Zorluk',
+    tableError: 'Aktivite verileri yüklenemedi.',
+    tableErrorSql: 'Supabase SQL Editörü\'nde aşağıdaki SQL\'i çalıştırın:',
+    tableMissing: 'user_activities tablosu bulunamadı.',
   },
   en: {
     title: 'Statistics 📊',
@@ -81,13 +89,59 @@ const ST = {
     trendTitle: '7-Day Activity',
     today: 'Today',
     noActivity: 'No activity',
+    hardWords: 'Hardest Words',
+    hardWordsSub: 'Highest spaced repetition score',
+    hardWordsNone: 'No difficulty data yet — complete quizzes and writing exercises to see results.',
+    difficulty: 'Difficulty',
+    tableError: 'Could not load activity data.',
+    tableErrorSql: 'Run the following SQL in the Supabase SQL Editor:',
+    tableMissing: 'user_activities table not found.',
   },
 };
+
+const SETUP_SQL = `-- Run this in Supabase SQL Editor
+CREATE TABLE IF NOT EXISTS user_activities (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  activity_type TEXT NOT NULL,
+  score INTEGER NOT NULL DEFAULT 0,
+  total_items INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE user_activities ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own activities" ON user_activities
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS user_favorites (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  word_id TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, word_id)
+);
+ALTER TABLE user_favorites ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own favorites" ON user_favorites
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS user_word_tags (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  word_id TEXT NOT NULL,
+  tags TEXT[] NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, word_id)
+);
+ALTER TABLE user_word_tags ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own tags" ON user_word_tags
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);`;
 
 const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dailyGoal = 3, lang = 'tr' }) => {
   const [loading, setLoading] = useState(true);
   const [wordStats, setWordStats] = useState({ total: 0, addedByMe: 0 });
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [fetchError, setFetchError] = useState<{ type: 'table_missing' | 'unknown'; message: string } | null>(null);
+  const [showSql, setShowSql] = useState(false);
+  const [sqlCopied, setSqlCopied] = useState(false);
 
   const t = ST[lang];
 
@@ -97,6 +151,7 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
 
   const fetchData = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const { count: totalCount } = await supabase.from('vocabulary').select('*', { count: 'exact', head: true });
 
@@ -119,10 +174,18 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (logError) throw logError;
+      if (logError) {
+        const isMissing = logError.code === '42P01' || logError.message?.includes('does not exist');
+        setFetchError({
+          type: isMissing ? 'table_missing' : 'unknown',
+          message: logError.message
+        });
+        return;
+      }
       if (logData) setActivityLogs(logData);
-    } catch (err) {
-      console.error('İstatistikler getirilirken hata oluştu:', err);
+    } catch (err: any) {
+      setFetchError({ type: 'unknown', message: err?.message || String(err) });
+      console.error('İstatistikler getirilirken hata:', err);
     } finally {
       setLoading(false);
     }
@@ -177,6 +240,27 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
     return days;
   };
 
+  // Most wrong words from wordDifficulty localStorage
+  const getHardWords = () => {
+    const diffMap = getDifficultiesMap(userId);
+    return Object.entries(diffMap)
+      .filter(([, score]) => score >= 4)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([wordId, score]) => {
+        const item = vocabItems.find(v => v.id === wordId);
+        return item ? { item, score } : null;
+      })
+      .filter(Boolean) as { item: VocabularyItem; score: number }[];
+  };
+
+  const copySQL = () => {
+    navigator.clipboard.writeText(SETUP_SQL).then(() => {
+      setSqlCopied(true);
+      setTimeout(() => setSqlCopied(false), 2000);
+    });
+  };
+
   const totalActivities = activityLogs.length;
   const streak = calculateStreak();
   const todayCount = todayActivityCount();
@@ -185,6 +269,7 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
   const flashcardCount = activityLogs.filter(l => l.activity_type === 'flashcards').reduce((acc, curr) => acc + curr.total_items, 0);
   const last7Days = getLast7Days();
   const maxDayCount = Math.max(1, ...last7Days.map(d => d.count));
+  const hardWords = getHardWords();
 
   const radius = 45;
   const circumference = 2 * Math.PI * radius;
@@ -207,6 +292,41 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
+
+          {/* Table missing / error banner */}
+          {fetchError && (
+            <div className="col-span-1 md:col-span-3 bg-amber-50 border-2 border-amber-200 p-5 sm:p-6 rounded-[2rem] space-y-3">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">⚠️</span>
+                <div>
+                  <p className="font-black text-amber-800 text-sm sm:text-base">
+                    {fetchError.type === 'table_missing' ? t.tableMissing : t.tableError}
+                  </p>
+                  <p className="text-amber-600 text-xs font-medium">{fetchError.message}</p>
+                </div>
+              </div>
+              <p className="text-amber-700 text-xs sm:text-sm font-bold">{t.tableErrorSql}</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowSql(v => !v)}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-xl font-black text-xs hover:bg-amber-700 transition-colors"
+                >
+                  {showSql ? '— SQL' : '+ SQL'}
+                </button>
+                <button
+                  onClick={copySQL}
+                  className="px-4 py-2 bg-white border border-amber-300 text-amber-700 rounded-xl font-black text-xs hover:bg-amber-50 transition-colors"
+                >
+                  {sqlCopied ? '✓ Kopyalandı!' : '📋 Kopyala'}
+                </button>
+              </div>
+              {showSql && (
+                <pre className="bg-slate-900 text-green-400 p-4 rounded-xl text-[10px] sm:text-xs overflow-x-auto leading-relaxed font-mono">
+                  {SETUP_SQL}
+                </pre>
+              )}
+            </div>
+          )}
 
           {/* Global pool */}
           <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-2xl text-white flex flex-col items-center text-center col-span-1 md:col-span-3">
@@ -303,6 +423,34 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Hardest words (spaced repetition) */}
+          <div className="col-span-1 md:col-span-3 bg-white p-5 sm:p-8 rounded-[2rem] shadow-lg border border-slate-100">
+            <h4 className="font-black text-slate-800 text-sm sm:text-base mb-1 flex items-center space-x-2">
+              <span>🔥</span>
+              <span>{t.hardWords}</span>
+            </h4>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-bold mb-4">{t.hardWordsSub}</p>
+            {hardWords.length === 0 ? (
+              <p className="text-slate-400 text-xs sm:text-sm font-medium text-center py-4">{t.hardWordsNone}</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                {hardWords.map(({ item, score }) => (
+                  <div key={item.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2.5 border border-slate-100">
+                    <div className="min-w-0">
+                      <span className="font-black text-slate-800 text-sm truncate block">{item.word}</span>
+                      <span className="text-indigo-500 font-bold text-xs truncate block">{item.meaning}</span>
+                    </div>
+                    <div className="flex shrink-0 ml-2">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <span key={i} className={`text-base ${i < score ? 'text-orange-400' : 'text-slate-200'}`}>🔥</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Flashcard count */}

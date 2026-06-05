@@ -4,56 +4,124 @@ import { VocabularyItem } from '../types';
 
 interface GamesHubProps {
   vocabItems: VocabularyItem[];
+  lang?: 'tr' | 'en';
   onBack: () => void;
 }
 
 type GameMode = 'menu' | 'shooter' | 'match' | 'cloze';
 
-const GamesHub: React.FC<GamesHubProps> = ({ vocabItems, onBack }) => {
+const T = {
+  tr: {
+    menuTitle: 'Play Game 🎮',
+    menuSub: 'Eğlenerek Zirveye Çık',
+    backToMain: '← Ana Menüye Dön',
+    game1: 'Kelime Avcısı',
+    game1sub: 'İnen Kelimeleri Yakala',
+    game2: 'Kelime Eşleştir',
+    game2sub: 'Kelime & Anlam Eşleştir',
+    game3: 'Cümle Tamamlama',
+    game3sub: 'Boşlukları Doldur',
+    scoreLabel: 'SKOR',
+    questionLabel: 'SORU',
+    complete: 'Oyun Tamamlandı! 🎯',
+    totalScore: 'Toplam Skor:',
+    questionsCount: 'Soru',
+    mistakesCount: 'Hata',
+    newGame: 'Yeni Oyun ✨',
+    backMenu: 'Menüye Dön',
+    targetHint: 'Vurman Gereken Kelime Anlamı:',
+    matchTitle: 'Kelime Eşleştir 🧩',
+    congrats: 'Tebrikler! 🎉',
+    matchDesc: 'Hafızan süper, tüm kelimeleri eşleştirdin!',
+    giveUp: '← Vazgeç ve Dön',
+    clozeTitle: 'Cümle Tamamlama 📝',
+    congrats2: 'Tebrikler! ✨',
+    clozeDesc: 'Tüm cümleleri başarıyla tamamladın!',
+    sentencesCount: 'Cümle',
+    wrongCount: 'Yanlış Deneme',
+    quitGame: '← Oyunun Bırak',
+    noSentences: 'Cümle içeren yeterli kelime bulunamadı. Havuza daha fazla kelime ekleyin.',
+  },
+  en: {
+    menuTitle: 'Play Game 🎮',
+    menuSub: 'Rise to the Top, Have Fun!',
+    backToMain: '← Back to Menu',
+    game1: 'Word Hunter',
+    game1sub: 'Catch the Falling Words',
+    game2: 'Word Match',
+    game2sub: 'Match Words & Meanings',
+    game3: 'Sentence Fill',
+    game3sub: 'Fill in the Blanks',
+    scoreLabel: 'SCORE',
+    questionLabel: 'QUESTION',
+    complete: 'Game Complete! 🎯',
+    totalScore: 'Total Score:',
+    questionsCount: 'Questions',
+    mistakesCount: 'Mistakes',
+    newGame: 'New Game ✨',
+    backMenu: 'Back to Menu',
+    targetHint: 'Find the word for:',
+    matchTitle: 'Word Match 🧩',
+    congrats: 'Congratulations! 🎉',
+    matchDesc: 'Amazing memory, you matched all the words!',
+    giveUp: '← Give Up',
+    clozeTitle: 'Sentence Fill 📝',
+    congrats2: 'Congratulations! ✨',
+    clozeDesc: 'You completed all sentences successfully!',
+    sentencesCount: 'Sentences',
+    wrongCount: 'Wrong Attempts',
+    quitGame: '← Quit Game',
+    noSentences: 'Not enough words with example sentences. Add more words to the pool.',
+  },
+};
+
+const GamesHub: React.FC<GamesHubProps> = ({ vocabItems, lang = 'tr', onBack }) => {
   const [mode, setMode] = useState<GameMode>('menu');
+  const t = T[lang];
 
   if (mode === 'menu') {
     return (
       <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12 animate-in fade-in duration-500 px-4">
         <div className="text-center space-y-2 sm:space-y-4">
-          <h2 className="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight">Play Game 🎮</h2>
-          <p className="text-slate-400 font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] text-xs sm:text-sm">Eğlenerek Zirveye Çık</p>
+          <h2 className="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight">{t.menuTitle}</h2>
+          <p className="text-slate-400 font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] text-xs sm:text-sm">{t.menuSub}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
           <div onClick={() => setMode('shooter')} className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-xl border-4 border-orange-50 hover:scale-105 transition-all cursor-pointer text-center group">
             <div className="text-4xl sm:text-6xl mb-4 sm:mb-6 group-hover:animate-ping transition-all">🎯</div>
-            <h3 className="text-lg sm:text-xl font-black text-slate-800">Kelime Avcısı</h3>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-bold uppercase tracking-tighter">İnen Kelimeleri Yakala</p>
+            <h3 className="text-lg sm:text-xl font-black text-slate-800">{t.game1}</h3>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-bold uppercase tracking-tighter">{t.game1sub}</p>
           </div>
           <div onClick={() => setMode('match')} className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-xl border-4 border-indigo-50 hover:scale-105 transition-all cursor-pointer text-center group">
             <div className="text-4xl sm:text-6xl mb-4 sm:mb-6 group-hover:rotate-12 transition-all">🧩</div>
-            <h3 className="text-lg sm:text-xl font-black text-slate-800">Kelime Eşleştir</h3>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-bold uppercase tracking-tighter">Kelime & Anlam Eşleştir</p>
+            <h3 className="text-lg sm:text-xl font-black text-slate-800">{t.game2}</h3>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-bold uppercase tracking-tighter">{t.game2sub}</p>
           </div>
           <div onClick={() => setMode('cloze')} className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-xl border-4 border-green-50 hover:scale-105 transition-all cursor-pointer text-center group">
             <div className="text-4xl sm:text-6xl mb-4 sm:mb-6 group-hover:scale-110 transition-all">📝</div>
-            <h3 className="text-lg sm:text-xl font-black text-slate-800">Cümle Tamamlama</h3>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-bold uppercase tracking-tighter">Boşlukları Doldur</p>
+            <h3 className="text-lg sm:text-xl font-black text-slate-800">{t.game3}</h3>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-bold uppercase tracking-tighter">{t.game3sub}</p>
           </div>
         </div>
 
         <div className="flex justify-center pt-4 sm:pt-8">
-          <button onClick={onBack} className="text-slate-400 font-bold hover:text-slate-600 transition-colors uppercase tracking-widest text-[10px] sm:text-sm">← Ana Menüye Dön</button>
+          <button onClick={onBack} className="text-slate-400 font-bold hover:text-slate-600 transition-colors uppercase tracking-widest text-[10px] sm:text-sm">{t.backToMain}</button>
         </div>
       </div>
     );
   }
 
-  if (mode === 'shooter') return <WordShooterGame vocabItems={vocabItems} onBack={() => setMode('menu')} />;
-  if (mode === 'match') return <MatchGame vocabItems={vocabItems} onBack={() => setMode('menu')} />;
-  if (mode === 'cloze') return <ClozeGame vocabItems={vocabItems} onBack={() => setMode('menu')} />;
+  if (mode === 'shooter') return <WordShooterGame vocabItems={vocabItems} lang={lang} onBack={() => setMode('menu')} />;
+  if (mode === 'match') return <MatchGame vocabItems={vocabItems} lang={lang} onBack={() => setMode('menu')} />;
+  if (mode === 'cloze') return <ClozeGame vocabItems={vocabItems} lang={lang} onBack={() => setMode('menu')} />;
 
   return null;
 };
 
 // --- GAME 1: WORD SHOOTER ---
-const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> = ({ vocabItems, onBack }) => {
+const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; lang: 'tr' | 'en'; onBack: () => void }> = ({ vocabItems, lang, onBack }) => {
+  const t = T[lang];
   const [targetWord, setTargetWord] = useState<VocabularyItem | null>(null);
   const [fallingWords, setFallingWords] = useState<{ id: number; item: VocabularyItem; x: number; y: number }[]>([]);
   const [score, setScore] = useState(0);
@@ -61,7 +129,6 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
   const [gameOver, setGameOver] = useState(false);
   const [mistakes, setMistakes] = useState(0);
 
-  // useRef keeps the latest count accessible inside the interval/nextLevel without stale closures
   const questionCountRef = useRef(0);
   const targetWordRef = useRef<VocabularyItem | null>(null);
 
@@ -121,23 +188,23 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
   if (gameOver) {
     return (
       <div className="text-center space-y-6 sm:space-y-8 animate-in zoom-in-95 bg-white p-8 sm:p-16 rounded-[2.5rem] sm:rounded-[4rem] shadow-2xl max-w-xl mx-auto border-4 border-orange-50 px-6">
-        <h2 className="text-3xl sm:text-6xl font-black text-orange-500 leading-tight">Oyun Tamamlandı! 🎯</h2>
+        <h2 className="text-3xl sm:text-6xl font-black text-orange-500 leading-tight">{t.complete}</h2>
         <div className="space-y-4">
-          <p className="text-xl sm:text-3xl font-black text-slate-800">Toplam Skor: {score}</p>
+          <p className="text-xl sm:text-3xl font-black text-slate-800">{t.totalScore} {score}</p>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 text-slate-400 font-bold uppercase text-[10px] sm:text-sm">
             <div className="bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
               <span className="block text-xl sm:text-2xl text-orange-400">{questionCount}</span>
-              Soru
+              {t.questionsCount}
             </div>
             <div className="bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
               <span className="block text-xl sm:text-2xl text-red-400">{mistakes}</span>
-              Hata
+              {t.mistakesCount}
             </div>
           </div>
         </div>
         <div className="flex flex-col space-y-3 sm:space-y-4 pt-4 sm:pt-6">
-          <button onClick={restartGame} className="px-6 sm:px-10 py-4 sm:py-5 bg-orange-400 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl shadow-xl hover:scale-105 transition-all">Yeni Oyun ✨</button>
-          <button onClick={onBack} className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-sm">Menüye Dön</button>
+          <button onClick={restartGame} className="px-6 sm:px-10 py-4 sm:py-5 bg-orange-400 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl shadow-xl hover:scale-105 transition-all">{t.newGame}</button>
+          <button onClick={onBack} className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-sm">{t.backMenu}</button>
         </div>
       </div>
     );
@@ -146,11 +213,11 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
   return (
     <div className="relative w-full max-w-2xl mx-auto h-[500px] sm:h-[600px] bg-slate-900 rounded-[2rem] sm:rounded-[3rem] overflow-hidden border-4 sm:border-8 border-slate-800 shadow-2xl">
       <div className="absolute top-4 sm:top-6 left-4 sm:left-6 text-white font-black z-10 flex flex-col">
-        <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-widest">SKOR</span>
+        <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-widest">{t.scoreLabel}</span>
         <span className="text-lg sm:text-2xl">{score}</span>
       </div>
       <div className="absolute top-4 sm:top-6 right-4 sm:right-6 text-white font-black z-10 text-right">
-        <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-widest">SORU</span>
+        <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-widest">{t.questionLabel}</span>
         <span className="text-lg sm:text-2xl">{questionCount}/20</span>
       </div>
 
@@ -166,7 +233,7 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
       ))}
 
       <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-10 bg-indigo-600 text-white text-center shadow-[0_-20px_50px_rgba(0,0,0,0.3)]">
-        <p className="text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black opacity-60 mb-1 sm:mb-2">Vurman Gereken Kelime Anlamı:</p>
+        <p className="text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black opacity-60 mb-1 sm:mb-2">{t.targetHint}</p>
         <h3 className="text-2xl sm:text-4xl font-black break-words">{targetWord?.meaning}</h3>
       </div>
     </div>
@@ -176,7 +243,8 @@ const WordShooterGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => vo
 // --- GAME 2: PAIR MATCH ---
 type MatchCard = { id: number; text: string; matchId: string; type: 'en' | 'tr'; isFlipped: boolean; isMatched: boolean };
 
-const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> = ({ vocabItems, onBack }) => {
+const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; lang: 'tr' | 'en'; onBack: () => void }> = ({ vocabItems, lang, onBack }) => {
+  const t = T[lang];
   const [cards, setCards] = useState<MatchCard[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [score, setScore] = useState(0);
@@ -200,12 +268,9 @@ const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
   };
 
   const handleCardClick = (idx: number) => {
-    // Guard: already 2 selected, already flipped, or already matched
     if (selected.length === 2 || cards[idx].isFlipped || cards[idx].isMatched) return;
 
     const newSelected = [...selected, idx];
-
-    // Immutably flip the card
     setCards(prev => prev.map((c, i) => i === idx ? { ...c, isFlipped: true } : c));
     setSelected(newSelected);
 
@@ -240,11 +305,11 @@ const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
   if (gameFinished) {
     return (
       <div className="text-center space-y-6 sm:space-y-8 animate-in zoom-in-95 bg-white p-8 sm:p-16 rounded-[2.5rem] sm:rounded-[4rem] shadow-2xl max-w-xl mx-auto border-4 border-indigo-50 px-6">
-        <h2 className="text-4xl sm:text-6xl font-black text-indigo-500">Tebrikler! 🎉</h2>
-        <p className="text-lg sm:text-2xl font-bold text-slate-600">Hafızan süper, tüm kelimeleri eşleştirdin!</p>
+        <h2 className="text-4xl sm:text-6xl font-black text-indigo-500">{t.congrats}</h2>
+        <p className="text-lg sm:text-2xl font-bold text-slate-600">{t.matchDesc}</p>
         <div className="flex flex-col space-y-3 sm:space-y-4 pt-4 sm:pt-6">
-          <button onClick={initGame} className="px-6 sm:px-10 py-4 sm:py-5 bg-indigo-600 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl shadow-xl hover:scale-105 transition-all">Yeni Oyun ✨</button>
-          <button onClick={onBack} className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-sm">Menüye Dön</button>
+          <button onClick={initGame} className="px-6 sm:px-10 py-4 sm:py-5 bg-indigo-600 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl shadow-xl hover:scale-105 transition-all">{t.newGame}</button>
+          <button onClick={onBack} className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-sm">{t.backMenu}</button>
         </div>
       </div>
     );
@@ -253,8 +318,8 @@ const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
   return (
     <div className="max-w-2xl mx-auto space-y-6 sm:space-y-10 animate-in fade-in px-4">
       <div className="flex justify-between items-center bg-white p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm">
-        <h3 className="text-xl sm:text-3xl font-black text-slate-800">Kelime Eşleştir 🧩</h3>
-        <span className="bg-indigo-600 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full font-black shadow-lg text-xs sm:text-base">SKOR: {score}</span>
+        <h3 className="text-xl sm:text-3xl font-black text-slate-800">{t.matchTitle}</h3>
+        <span className="bg-indigo-600 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full font-black shadow-lg text-xs sm:text-base">{t.scoreLabel}: {score}</span>
       </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -273,14 +338,15 @@ const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
       </div>
 
       <div className="text-center">
-        <button onClick={onBack} className="text-slate-400 font-bold hover:text-slate-600 transition-colors uppercase tracking-widest text-[10px]">← Vazgeç ve Dön</button>
+        <button onClick={onBack} className="text-slate-400 font-bold hover:text-slate-600 transition-colors uppercase tracking-widest text-[10px]">{t.giveUp}</button>
       </div>
     </div>
   );
 };
 
 // --- GAME 3: CLOZE (SENTENCE) ---
-const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> = ({ vocabItems, onBack }) => {
+const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; lang: 'tr' | 'en'; onBack: () => void }> = ({ vocabItems, lang, onBack }) => {
+  const t = T[lang];
   const [currentIdx, setCurrentIdx] = useState(0);
   const [items, setItems] = useState<VocabularyItem[]>([]);
   const [options, setOptions] = useState<string[]>([]);
@@ -342,30 +408,30 @@ const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
 
   if (items.length === 0) return (
     <div className="text-center p-20 font-black text-slate-400">
-      Cümle içeren yeterli kelime bulunamadı. Havuza daha fazla kelime ekleyin.
+      {t.noSentences}
     </div>
   );
 
   if (gameOver) {
     return (
       <div className="text-center space-y-6 sm:space-y-8 animate-in zoom-in-95 bg-white p-8 sm:p-16 rounded-[2.5rem] sm:rounded-[4rem] shadow-2xl max-w-xl mx-auto border-4 border-green-50 px-6">
-        <h2 className="text-4xl sm:text-6xl font-black text-green-500">Tebrikler! ✨</h2>
+        <h2 className="text-4xl sm:text-6xl font-black text-green-500">{t.congrats2}</h2>
         <div className="space-y-4">
-          <p className="text-lg sm:text-2xl font-bold text-slate-700">Tüm cümleleri başarıyla tamamladın!</p>
+          <p className="text-lg sm:text-2xl font-bold text-slate-700">{t.clozeDesc}</p>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 text-slate-400 font-bold uppercase text-[10px] sm:text-sm">
             <div className="bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
               <span className="block text-xl sm:text-2xl text-green-500">{currentIdx + 1}</span>
-              Cümle
+              {t.sentencesCount}
             </div>
             <div className="bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
               <span className="block text-xl sm:text-2xl text-red-400">{mistakeCount}</span>
-              Yanlış Deneme
+              {t.wrongCount}
             </div>
           </div>
         </div>
         <div className="flex flex-col space-y-3 sm:space-y-4 pt-4 sm:pt-6">
-          <button onClick={resetGame} className="px-6 sm:px-10 py-4 sm:py-5 bg-green-500 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl shadow-xl hover:scale-105 transition-all">Yeni Oyun ✨</button>
-          <button onClick={onBack} className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-sm">Menüye Dön</button>
+          <button onClick={resetGame} className="px-6 sm:px-10 py-4 sm:py-5 bg-green-500 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl shadow-xl hover:scale-105 transition-all">{t.newGame}</button>
+          <button onClick={onBack} className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-sm">{t.backMenu}</button>
         </div>
       </div>
     );
@@ -377,7 +443,7 @@ const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
   return (
     <div className="max-w-2xl mx-auto space-y-8 sm:space-y-12 animate-in fade-in px-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl sm:text-3xl font-black text-slate-800">Cümle Tamamlama 📝</h3>
+        <h3 className="text-xl sm:text-3xl font-black text-slate-800">{t.clozeTitle}</h3>
         <span className="bg-green-500 text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-full font-black text-xs sm:text-sm uppercase tracking-widest">{currentIdx + 1} / {Math.min(items.length, 20)}</span>
       </div>
 
@@ -411,7 +477,7 @@ const ClozeGame: React.FC<{ vocabItems: VocabularyItem[]; onBack: () => void }> 
       </div>
 
       <div className="text-center">
-        <button onClick={onBack} className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">← Oyunun Bırak</button>
+        <button onClick={onBack} className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">{t.quitGame}</button>
       </div>
     </div>
   );

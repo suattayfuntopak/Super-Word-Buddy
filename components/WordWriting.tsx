@@ -5,10 +5,34 @@ import { speak } from '../utils/speak';
 
 interface WordWritingProps {
   items: VocabularyItem[];
+  lang?: 'tr' | 'en';
   onClose: (score: number, total: number) => void;
 }
 
-const WordWriting: React.FC<WordWritingProps> = ({ items, onClose }) => {
+const T = {
+  tr: {
+    close: 'Kapat ✖',
+    meaningLabel: 'TÜRKÇE ANLAMI',
+    deleteLetter: 'Harf Sil',
+    showAnswer: 'Cevabı Gör ✨',
+    nextWord: 'Sıradaki Kelime 🚀',
+    finishCamp: 'Kampı Bitir ✨',
+    ukPronounce: 'UK Telaffuz',
+    usPronounce: 'US Telaffuz',
+  },
+  en: {
+    close: 'Close ✖',
+    meaningLabel: 'TURKISH MEANING',
+    deleteLetter: 'Delete',
+    showAnswer: 'Reveal ✨',
+    nextWord: 'Next Word 🚀',
+    finishCamp: 'Finish Camp ✨',
+    ukPronounce: 'UK Pronunciation',
+    usPronounce: 'US Pronunciation',
+  },
+};
+
+const WordWriting: React.FC<WordWritingProps> = ({ items, lang = 'tr', onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState<string[]>([]);
   const [scrambled, setScrambled] = useState<string[]>([]);
@@ -17,6 +41,7 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, onClose }) => {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [successCount, setSuccessCount] = useState(0);
 
+  const t = T[lang];
   const current = items[currentIndex];
 
   useEffect(() => {
@@ -99,14 +124,14 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, onClose }) => {
     <div className="w-full flex flex-col items-center space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 px-4">
       <div className="flex justify-between items-center w-full max-w-2xl">
         <span className="text-xs sm:text-lg font-black text-slate-300 uppercase tracking-widest">{currentIndex + 1} / {items.length}</span>
-        <button onClick={() => onClose(successCount, items.length)} className="text-slate-400 font-bold hover:text-slate-600 text-sm sm:text-base">Kapat ✖</button>
+        <button onClick={() => onClose(successCount, items.length)} className="text-slate-400 hover:text-slate-600 font-bold text-sm sm:text-base transition-colors">{t.close}</button>
       </div>
 
       <div className="bg-white p-6 sm:p-12 rounded-[2rem] sm:rounded-[4rem] shadow-2xl border-4 border-white text-center w-full max-w-2xl overflow-hidden flex flex-col items-center relative">
         <div className="mb-4 flex flex-col items-center">
-          <span className="text-[10px] sm:text-sm font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 px-3 sm:px-4 py-1 rounded-full mb-2">TÜRKÇE ANLAMI</span>
+          <span className="text-[10px] sm:text-sm font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 px-3 sm:px-4 py-1 rounded-full mb-2">{t.meaningLabel}</span>
           {current.wordTypeTr && (
-            <span className="text-[10px] sm:text-xs font-black text-slate-300 uppercase tracking-widest italic">({current.wordTypeTr})</span>
+            <span className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest italic">({current.wordTypeTr})</span>
           )}
         </div>
         <h2 className="text-2xl sm:text-5xl font-black text-slate-800 mb-6 sm:mb-12 tracking-tight break-words w-full">
@@ -142,7 +167,7 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, onClose }) => {
                 onClick={() => handleLetterClick(letter, idx)}
                 className={`w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-2xl font-black transition-all transform active:scale-95 ${
                   usedIndices.includes(idx)
-                  ? 'bg-slate-100 text-slate-200 cursor-not-allowed border-none shadow-none'
+                  ? 'bg-slate-100 text-slate-300 cursor-not-allowed border-none shadow-none'
                   : 'bg-blue-50 text-blue-500 hover:bg-blue-100 hover:scale-110 shadow-lg shadow-blue-100/50 border-2 border-blue-100'
                 }`}
               >
@@ -156,7 +181,7 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, onClose }) => {
               <button
                 onClick={() => speak(current.word, 'en-GB')}
                 className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-50 text-blue-500 rounded-xl sm:rounded-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-lg shadow-blue-100/50 border-2 border-blue-100"
-                title="UK Telaffuz"
+                title={t.ukPronounce}
               >
                 <img src="https://flagcdn.com/w40/gb.png" className="w-5 sm:w-6 rounded-sm" alt="UK" />
               </button>
@@ -165,7 +190,7 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, onClose }) => {
               <button
                 onClick={() => speak(current.word, 'en-US')}
                 className="w-12 h-12 sm:w-16 sm:h-16 bg-red-50 text-red-500 rounded-xl sm:rounded-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-lg shadow-red-100/50 border-2 border-red-100"
-                title="US Telaffuz"
+                title={t.usPronounce}
               >
                 <img src="https://flagcdn.com/w40/us.png" className="w-5 sm:w-6 rounded-sm" alt="US" />
               </button>
@@ -182,7 +207,7 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, onClose }) => {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.75L14.25 12m0 0l2.25 2.25M14.25 12l2.25-2.25M14.25 12L12 14.25m-2.58 4.92l-6.375-6.375a1.125 1.125 0 010-1.59L9.42 4.83c.211-.211.498-.33.796-.33H19.5a2.25 2.25 0 012.25 2.25v10.5a2.25 2.25 0 01-2.25 2.25h-9.284c-.298 0-.585-.119-.796-.33z" />
               </svg>
-              <span>Harf Sil</span>
+              <span>{t.deleteLetter}</span>
             </button>
           )}
 
@@ -191,7 +216,7 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, onClose }) => {
               onClick={revealAnswer}
               className="px-6 py-3 sm:px-8 sm:py-4 bg-orange-400 text-white rounded-xl sm:rounded-2xl font-black shadow-xl shadow-orange-200 animate-bounce hover:animate-none transition-all text-sm sm:text-base"
             >
-              Cevabı Gör ✨
+              {t.showAnswer}
             </button>
           )}
         </div>
@@ -199,7 +224,7 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, onClose }) => {
 
       {isCorrect && (
         <button onClick={nextWord} className="w-full max-w-2xl py-4 sm:py-6 bg-orange-400 text-white rounded-2xl sm:rounded-[2.5rem] font-black text-xl sm:text-2xl shadow-xl">
-          {currentIndex === items.length - 1 ? 'Kampı Bitir ✨' : 'Sıradaki Kelime 🚀'}
+          {currentIndex === items.length - 1 ? t.finishCamp : t.nextWord}
         </button>
       )}
     </div>
