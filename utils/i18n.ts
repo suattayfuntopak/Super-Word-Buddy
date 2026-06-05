@@ -8,10 +8,10 @@ export const storeLang = (lang: Lang): void =>
 
 export const translations = {
   tr: {
-    subtitle: 'Academic Global Pool',
+    subtitle: 'Global Kelime Havuzu',
     poolLabel: 'Global Havuz',
     words: 'Kelime',
-    homeTitle: 'Common Academic Knowledge',
+    homeTitle: 'Küresel Kelime Havuzu',
     poolDesc: (n: number) => `Toplam ${n.toLocaleString('tr-TR')} kelimelik devasa bir kaynağımız var.`,
     tagline1: 'Üniversite Arkadaşlarınla Birlikte',
     tagline2: 'Kelime Dağarcığını Genişlet!',
@@ -56,10 +56,10 @@ export const translations = {
     designedBy: 'DESIGNED BY',
   },
   en: {
-    subtitle: 'Academic Global Pool',
+    subtitle: 'Global Word Pool',
     poolLabel: 'Global Pool',
     words: 'Words',
-    homeTitle: 'Common Academic Knowledge',
+    homeTitle: 'Global Word Pool',
     poolDesc: (n: number) => `We have a massive pool of ${n.toLocaleString('en-US')} words.`,
     tagline1: 'Expand Your Vocabulary',
     tagline2: 'Together With University Friends!',

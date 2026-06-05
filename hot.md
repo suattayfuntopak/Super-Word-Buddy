@@ -161,6 +161,57 @@
 
 ---
 
+## Güncelleme — 2026-06-05 (5. Oturum — Browser Geçmişi, Quiz Kalıcılığı, Tam Çeviri, Trend Grafik, Auto-Pronounce)
+
+### 31. Browser Geri/İleri Tuşu Desteği
+- **Sorun:** Browser geri tuşuna basınca SPA durumu kaybolup boş sayfa açılıyordu.
+- **Çözüm:** `window.history.pushState` + `popstate` event listener entegrasyonu.
+- `HISTORY_STATES`: `selection`, `list`, `learning`, `writing`, `stats`, `tutor`, `games`, `quiz` — her geçişte history stack'e ekleniyor.
+- `isPopStateNav` ref ile double-push döngüsü önleniyor (popstate'den gelen setState yeniden pushState yapmıyor).
+- Back/forward tuşlarıyla uygulama içinde gezinme çalışıyor; history bitmişse 'selection'/'home'a yönlendiriyor.
+
+### 32. Quiz Kalıcılığı (Başka Uygulamaya Geçince Quiz Devam Ediyor)
+- **Sorun:** Quiz sırasında başka uygulamaya geçilince geri dönünce test kapanıp ana ekran görünüyordu.
+- **Çözüm:** `'quiz'` PERSISTABLE_STATES listesine eklendi.
+- Otomatik quiz üretimi: `state === 'quiz' && quizQuestions.length === 0 && vocabItems.length >= 5` koşulu gerçekleşince `generateLocalQuiz` çalışıyor.
+- Akış: Token yenileme → `'quiz'` state restore → Quiz bileşeni spinner gösteriyor → Vocab yüklenince sorular otomatik üretiliyor → Quiz başlıyor.
+
+### 33. "Common Academic Knowledge" → "Global Word Pool"
+- İngilizce: `homeTitle` ve `subtitle` → **"Global Word Pool"**
+- Türkçe: `homeTitle` → **"Küresel Kelime Havuzu"**, `subtitle` → **"Global Kelime Havuzu"**
+- App.tsx'te h2 başlığı da `t.homeTitle` ile güncellendi.
+
+### 34. Tam TR/EN Çeviri (Flashcards, Quiz, Statistics)
+- **Flashcards.tsx:** `T.tr` / `T.en` çeviri objesi eklendi; kart etiketi, telaffuz, gezinme, flip ipucu, otomatik sesli etiketi çevrildi.
+- **Quiz.tsx:** `T.tr` / `T.en` eklendi; soru/skor etiketleri, klavye ipucu, anlam/kapat, ileri/sonuç butonları, sonuç mesajları, gözden geçirilecekler başlığı çevrildi.
+- **Statistics.tsx:** `ST.tr` / `ST.en` eklendi; tüm kart başlıkları, birimler, durum mesajları çevrildi.
+- `lang` prop tüm bu bileşenlere aktarılıyor (`App.tsx`'ten).
+
+### 35. 7 Günlük Aktivite Trend Grafiği (Statistics)
+- Son 7 günün aktivite sayısını gösteren bar grafik eklendi.
+- CSS tabanlı (SVG/canvas yok), `activityLogs` verisi üzerinden anlık hesaplanıyor.
+- Bugün: indigo gradient bar; önceki günler: slate bar.
+- Bar yüksekliği: `(count / maxCount) * 100%`, sıfır gün: 4px görünür çizgi.
+
+### 36. Otomatik Telaffuz Toogle (Flashcards)
+- Flashcards'a "🔊 Otomatik Sesli / Auto Pronounce" toggle eklendi.
+- Aktifken: her yeni karta geçildiğinde İngilizce kelime otomatik UK aksanıyla okunuyor.
+- State: bileşen içinde `autoPronounce` boolean; toggle butonu header'da gösteriliyor.
+
+---
+
+## Güncellenen Dosyalar (5. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `utils/i18n.ts` | GÜNCELLENDİ — homeTitle, subtitle düzeltildi |
+| `App.tsx` | GÜNCELLENDİ — history pushState/popstate, quiz kalıcılığı, lang→components |
+| `components/Flashcards.tsx` | GÜNCELLENDİ — lang prop, tam çeviri, auto-pronounce toggle |
+| `components/Quiz.tsx` | GÜNCELLENDİ — lang prop, tam çeviri |
+| `components/Statistics.tsx` | GÜNCELLENDİ — lang prop, tam çeviri, 7 günlük trend grafik |
+
+---
+
 ## Güncelleme — 2026-06-05 (4. Oturum — Tema, Dil, Kullanıcı Menüsü, 3 Yeni Özellik)
 
 ### 25. Dark / Light / System Tema

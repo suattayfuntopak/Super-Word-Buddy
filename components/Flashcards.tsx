@@ -5,13 +5,45 @@ import { speak } from '../utils/speak';
 
 interface FlashcardsProps {
   items: VocabularyItem[];
+  lang?: 'tr' | 'en';
   onComplete: (totalReviewed: number) => void;
 }
 
-const Flashcards: React.FC<FlashcardsProps> = ({ items, onComplete }) => {
+const T = {
+  tr: {
+    langLabel: 'İNGİLİZCE',
+    meaningLabel: 'TÜRKÇE ANLAMI',
+    flipHint: 'Çevirmek için tıkla ✨',
+    kbHint: '← → ile gezin · Space ile çevir 🧚',
+    prev: '← Önceki',
+    next: 'Sıradaki →',
+    finish: 'Bitir ✨',
+    card: 'KART',
+    autoPronounce: 'Otomatik Sesli',
+    listenUK: 'UK Telaffuz',
+    listenUS: 'US Telaffuz',
+  },
+  en: {
+    langLabel: 'ENGLISH',
+    meaningLabel: 'TURKISH MEANING',
+    flipHint: 'Click to flip ✨',
+    kbHint: '← → to navigate · Space to flip 🧚',
+    prev: '← Previous',
+    next: 'Next →',
+    finish: 'Finish ✨',
+    card: 'CARD',
+    autoPronounce: 'Auto Pronounce',
+    listenUK: 'UK Pronunciation',
+    listenUS: 'US Pronunciation',
+  },
+};
+
+const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [autoPronounce, setAutoPronounce] = useState(false);
 
+  const t = T[lang];
   const current = items[currentIndex];
 
   const nextCard = () => {
@@ -30,16 +62,18 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, onComplete }) => {
     }
   };
 
+  // Auto-pronounce on new card
+  useEffect(() => {
+    if (autoPronounce && current?.word) {
+      speak(current.word, 'en-GB');
+    }
+  }, [currentIndex, autoPronounce]);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') {
-        nextCard();
-      } else if (e.key === 'ArrowLeft') {
-        prevCard();
-      } else if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        setIsFlipped(f => !f);
-      }
+      if (e.key === 'ArrowRight') nextCard();
+      else if (e.key === 'ArrowLeft') prevCard();
+      else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setIsFlipped(f => !f); }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -48,12 +82,23 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, onComplete }) => {
   return (
     <div className="flex flex-col items-center space-y-8 w-full max-w-lg mx-auto p-4 animate-in fade-in duration-500">
       <div className="w-full flex justify-between items-center px-4">
-        <span className="text-sm font-bold text-orange-400 bg-orange-50 px-3 py-1 rounded-full">KART {currentIndex + 1} / {items.length}</span>
-        <div className="h-3 w-32 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-          <div
-            className="h-full bg-gradient-to-r from-blue-400 to-indigo-400 transition-all duration-500"
-            style={{ width: `${((currentIndex + 1) / items.length) * 100}%` }}
-          />
+        <span className="text-sm font-bold text-orange-400 bg-orange-50 px-3 py-1 rounded-full">{t.card} {currentIndex + 1} / {items.length}</span>
+        <div className="flex items-center space-x-3">
+          {/* Auto-pronounce toggle */}
+          <button
+            onClick={() => setAutoPronounce(v => !v)}
+            className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black transition-all border ${autoPronounce ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-400 hover:border-indigo-300'}`}
+            title={t.autoPronounce}
+          >
+            <span>🔊</span>
+            <span className="hidden sm:inline">{t.autoPronounce}</span>
+          </button>
+          <div className="h-3 w-32 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+            <div
+              className="h-full bg-gradient-to-r from-blue-400 to-indigo-400 transition-all duration-500"
+              style={{ width: `${((currentIndex + 1) / items.length) * 100}%` }}
+            />
+          </div>
         </div>
       </div>
 
@@ -62,9 +107,9 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, onComplete }) => {
         onClick={() => setIsFlipped(!isFlipped)}
       >
         <div className={`relative w-full h-full transition-all duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
-          {/* ÖN YÜZ (İngilizce) */}
+          {/* Front (English) */}
           <div className="absolute inset-0 bg-white rounded-[2rem] sm:rounded-[3rem] shadow-xl flex flex-col items-center p-6 sm:p-8 border-4 border-blue-50 backface-hidden">
-            <span className="text-[10px] sm:text-sm font-bold text-slate-300 uppercase tracking-widest mb-2 shrink-0">İNGİLİZCE</span>
+            <span className="text-[10px] sm:text-sm font-bold text-slate-300 uppercase tracking-widest mb-2 shrink-0">{t.langLabel}</span>
 
             <div className="flex-1 flex flex-col items-center justify-center w-full text-center space-y-8 sm:space-y-12">
               <div className="space-y-3 sm:space-y-4">
@@ -80,26 +125,26 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, onComplete }) => {
                 <button
                   onClick={(e) => { e.stopPropagation(); speak(current.word, 'en-GB'); }}
                   className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-50 text-blue-500 rounded-xl sm:rounded-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-md border border-blue-100"
-                  title="UK Telaffuz"
+                  title={t.listenUK}
                 >
                   <img src="https://flagcdn.com/w40/gb.png" className="w-6 sm:w-8 rounded-sm" alt="UK" />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); speak(current.word, 'en-US'); }}
                   className="w-12 h-12 sm:w-16 sm:h-16 bg-red-50 text-red-500 rounded-xl sm:rounded-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-md border border-red-100"
-                  title="US Telaffuz"
+                  title={t.listenUS}
                 >
                   <img src="https://flagcdn.com/w40/us.png" className="w-6 sm:w-8 rounded-sm" alt="US" />
                 </button>
               </div>
             </div>
 
-            <p className="text-slate-300 font-bold text-xs sm:text-sm shrink-0">Çevirmek için tıkla ✨ &nbsp;·&nbsp; <span className="font-black">Space / Enter</span></p>
+            <p className="text-slate-300 font-bold text-xs sm:text-sm shrink-0">{t.flipHint} &nbsp;·&nbsp; <span className="font-black">Space / Enter</span></p>
           </div>
 
-          {/* ARKA YÜZ (Türkçe) */}
+          {/* Back (Turkish meaning) */}
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-[2rem] sm:rounded-[3rem] shadow-xl flex flex-col items-center p-4 sm:p-8 text-white backface-hidden rotate-y-180 overflow-y-auto">
-            <span className="text-[10px] sm:text-sm font-bold text-white/50 uppercase tracking-widest mb-2 sm:mb-4 shrink-0">TÜRKÇE ANLAMI</span>
+            <span className="text-[10px] sm:text-sm font-bold text-white/50 uppercase tracking-widest mb-2 sm:mb-4 shrink-0">{t.meaningLabel}</span>
 
             <div className="flex-1 flex flex-col items-center justify-center w-full">
               <div className="flex flex-col items-center mb-3 sm:mb-6">
@@ -120,15 +165,15 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, onComplete }) => {
               </div>
             </div>
 
-            <p className="text-white/40 text-[10px] sm:text-xs pt-3 sm:pt-6 font-bold shrink-0">← → ile gezin · Space ile çevir 🧚</p>
+            <p className="text-white/40 text-[10px] sm:text-xs pt-3 sm:pt-6 font-bold shrink-0">{t.kbHint}</p>
           </div>
         </div>
       </div>
 
       <div className="flex space-x-3 sm:space-x-4 w-full px-2">
-        <button onClick={prevCard} disabled={currentIndex === 0} className="flex-1 py-4 sm:py-5 bg-white border-2 border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] font-black text-slate-500 disabled:opacity-30 transition-all shadow-sm text-sm sm:text-base">← Önceki</button>
+        <button onClick={prevCard} disabled={currentIndex === 0} className="flex-1 py-4 sm:py-5 bg-white border-2 border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] font-black text-slate-500 disabled:opacity-30 transition-all shadow-sm text-sm sm:text-base">{t.prev}</button>
         <button onClick={nextCard} className="flex-1 py-4 sm:py-5 bg-orange-400 text-white rounded-[1.5rem] sm:rounded-[2rem] font-black text-base sm:text-lg shadow-xl hover:bg-orange-500 transition-colors">
-          {currentIndex === items.length - 1 ? 'Bitir ✨' : 'Sıradaki →'}
+          {currentIndex === items.length - 1 ? t.finish : t.next}
         </button>
       </div>
     </div>

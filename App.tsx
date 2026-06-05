@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppState, VocabularyItem, QuizQuestion, QuizOption, User } from './types';
 import { analyzeVocabulary } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
@@ -22,7 +22,8 @@ import TutorView from './components/TutorView';
 import GamesHub from './components/GamesHub';
 import UserMenu from './components/UserMenu';
 
-const PERSISTABLE_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games'];
+const PERSISTABLE_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
+const HISTORY_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
 const PRESET_TAGS = ['IELTS', 'TOEFL', 'Academic', 'Business', 'Chapter 1', 'Chapter 2', 'Daily', 'Advanced'];
 
 const App: React.FC = () => {
@@ -57,6 +58,9 @@ const App: React.FC = () => {
   const [showFavoritesModeModal, setShowFavoritesModeModal] = useState(false);
 
   const t = translations[lang];
+
+  // Browser history: track if state change originated from popstate (to avoid double-push)
+  const isPopStateNav = useRef(false);
 
   // Apply theme on load + listen for system changes
   useEffect(() => {
@@ -112,11 +116,42 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   }, [state]);
 
+  // Push state to browser history for back/forward button support
+  useEffect(() => {
+    if (!isPopStateNav.current && HISTORY_STATES.includes(state)) {
+      window.history.pushState({ appState: state }, '', '/');
+    }
+    isPopStateNav.current = false;
+  }, [state]);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const prev = e.state?.appState as AppState | undefined;
+      isPopStateNav.current = true;
+      if (prev && HISTORY_STATES.includes(prev)) {
+        setState(prev);
+      } else {
+        setState(currentUser ? 'selection' : 'home');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentUser]);
+
   useEffect(() => {
     if (currentUser && PERSISTABLE_STATES.includes(state)) {
       localStorage.setItem(`swb_state_${currentUser.id}`, state);
     }
   }, [state, currentUser]);
+
+  // Auto-generate quiz when returning to quiz state with empty questions (quiz was persisted)
+  useEffect(() => {
+    if (state === 'quiz' && quizQuestions.length === 0 && vocabItems.length >= 5) {
+      const questions = generateLocalQuiz(vocabItems, currentUser?.id || '');
+      setQuizQuestions(questions);
+    }
+  }, [state, vocabItems.length]);
 
   useEffect(() => {
     setFavoriteIds(currentUser ? getFavoriteIds(currentUser.id) : new Set());
@@ -782,9 +817,10 @@ const App: React.FC = () => {
 
         {state === 'learning' && <Flashcards
           items={flashcardsItems}
+          lang={lang}
           onComplete={async (total) => { await logActivity('flashcards', total, total); setState('selection'); }}
         />}
-        {state === 'quiz' && <Quiz questions={quizQuestions} onClose={async (score, total, wrongWordStrings) => {
+        {state === 'quiz' && <Quiz questions={quizQuestions} lang={lang} onClose={async (score, total, wrongWordStrings) => {
           await logActivity('quiz', score, total);
           if (currentUser) {
             wrongWordStrings.forEach(wordStr => {
