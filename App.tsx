@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppState, VocabularyItem, QuizQuestion, User } from './types';
-import { analyzeVocabulary, generateQuiz } from './services/geminiService';
+import { AppState, VocabularyItem, QuizQuestion, QuizOption, User } from './types';
+import { analyzeVocabulary } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 import { speak } from './utils/speak';
 import FileUpload from './components/FileUpload';
@@ -154,21 +154,34 @@ const App: React.FC = () => {
     return shuffled;
   };
 
-  const startQuiz = async () => {
+  const generateLocalQuiz = (items: VocabularyItem[]): QuizQuestion[] => {
+    const shuffled = [...items].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, Math.min(20, shuffled.length));
+    return selected.map(item => {
+      const others = shuffled.filter(w => w.id !== item.id).slice(0, 4);
+      const correctOpt: QuizOption = { text: item.word, meaning: item.meaning, wordTypeEn: item.wordTypeEn, wordTypeTr: item.wordTypeTr };
+      const wrongOpts: QuizOption[] = others.map(w => ({ text: w.word, meaning: w.meaning, wordTypeEn: w.wordTypeEn, wordTypeTr: w.wordTypeTr }));
+      const options = [correctOpt, ...wrongOpts].sort(() => Math.random() - 0.5);
+      let question: string;
+      if (item.exampleSentence) {
+        const escaped = item.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const cloze = item.exampleSentence.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), '______');
+        question = cloze !== item.exampleSentence ? cloze : `"${item.meaning}" anlamına gelen İngilizce kelime?`;
+      } else {
+        question = `"${item.meaning}" anlamına gelen İngilizce kelime?`;
+      }
+      return { question, options, correctAnswer: item.word, word: item.word };
+    });
+  };
+
+  const startQuiz = () => {
     if (vocabItems.length < 5) {
       setError("Test için havuzda en az 5 kelime olmalı!");
       return;
     }
-    setQuizQuestions([]);
+    const questions = generateLocalQuiz(vocabItems);
+    setQuizQuestions(questions);
     setState('quiz');
-    try {
-      const questions = await generateQuiz(vocabItems);
-      setQuizQuestions(questions);
-    } catch (err) {
-      console.error("Quiz generation error:", err);
-      setState('selection');
-      setError("Test hazırlanırken bir hata oluştu. Lütfen tekrar deneyin.");
-    }
   };
 
   const handleFileSelect = async (base64: string, mimeType: string) => {
@@ -288,6 +301,11 @@ const App: React.FC = () => {
                   className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-indigo-50 text-xl sm:text-2xl transition-all shadow-inner border border-slate-100"
                   title="Ana Menü"
                 >🏠</button>
+                <button
+                  onClick={() => setState('stats')}
+                  className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-violet-50 text-xl sm:text-2xl transition-all shadow-inner border border-slate-100"
+                  title="İstatistikler"
+                >📊</button>
                 <button onClick={() => setState('upload')} className="bg-indigo-600 text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black shadow-lg hover:bg-indigo-700 transition-all whitespace-nowrap">Yükle</button>
                 <span className="hidden md:inline-block text-sm font-bold text-slate-600 italic">
                   <span className="text-[#FF0000] font-black">{currentUser.name}</span>
@@ -382,11 +400,6 @@ const App: React.FC = () => {
                 <div className="text-5xl mb-4 group-hover:animate-bounce transition-all">🎮</div>
                 <h3 className="text-2xl font-black text-slate-100">Play Game</h3>
                 <p className="text-sm text-white/70 mt-2 font-bold">Eğlenerek Öğren</p>
-              </div>
-              <div onClick={() => setState('stats')} className="bg-gradient-to-br from-violet-500 to-purple-700 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white sm:col-span-2 lg:col-span-1">
-                <div className="text-5xl mb-4 group-hover:animate-bounce transition-all">📊</div>
-                <h3 className="text-2xl font-black text-slate-100">İstatistikler</h3>
-                <p className="text-sm text-white/70 mt-2 font-bold">Başarı Paneli</p>
               </div>
             </div>
 
@@ -531,7 +544,7 @@ const App: React.FC = () => {
         {state === 'learning' && <Flashcards items={shuffleArray(vocabItems).slice(0, 40)} onComplete={async (total) => { await logActivity('flashcards', total, total); setState('selection'); }} />}
         {state === 'quiz' && <Quiz questions={quizQuestions} onClose={async (score, total) => { await logActivity('quiz', score, total); setState('selection'); }} />}
         {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} onClose={async (score, total) => { await logActivity('writing', score, total); setState('selection'); }} />}
-        {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} />}
+        {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} onBack={() => setState('selection')} />}
         {state === 'tutor' && <TutorView onBack={() => setState('selection')} />}
         {state === 'games' && <GamesHub vocabItems={vocabItems} onBack={() => setState('selection')} />}
       </main>

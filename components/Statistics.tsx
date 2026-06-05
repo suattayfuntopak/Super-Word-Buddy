@@ -6,6 +6,7 @@ import { VocabularyItem } from '../types';
 interface StatisticsProps {
   userId: string;
   vocabItems: VocabularyItem[];
+  onBack: () => void;
 }
 
 interface ActivityLog {
@@ -15,7 +16,7 @@ interface ActivityLog {
   created_at: string;
 }
 
-const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems }) => {
+const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [wordStats, setWordStats] = useState({
     total: 0,
@@ -101,9 +102,17 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems }) => {
 
   return (
     <div className="max-w-5xl mx-auto w-full space-y-8 sm:space-y-12 animate-in fade-in zoom-in-95 duration-500 pb-24 px-4">
-      <div className="text-center space-y-2 sm:space-y-4">
-        <h2 className="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight">İstatistikler 📊</h2>
-        <p className="text-slate-400 font-bold text-xs sm:text-lg uppercase tracking-[0.2em] sm:tracking-[0.3em]">Senin Başarı Panelin</p>
+      <div className="flex justify-between items-center">
+        <div className="space-y-1">
+          <h2 className="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight">İstatistikler 📊</h2>
+          <p className="text-slate-400 font-bold text-xs sm:text-lg uppercase tracking-[0.2em] sm:tracking-[0.3em]">Senin Başarı Panelin</p>
+        </div>
+        <button
+          onClick={onBack}
+          className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm"
+        >
+          ← Geri Dön
+        </button>
       </div>
 
       {loading ? (

@@ -110,3 +110,45 @@
 | `App.tsx` | GÜNCELLENDİ |
 | `index.tsx` | GÜNCELLENDİ |
 | `migrated_prompt_history/` | SİLİNDİ |
+
+---
+
+## Güncelleme — 2026-06-05 (2. Oturum)
+
+### 15. Quiz Anlık Yükleme (Gemini → Yerel Üretim)
+- **Sorun:** `generateQuiz` Gemini API'yi çağırıyordu → yavaş yükleme, ağ hatasında sonsuz "hazırlanıyor" spinner.
+- **Çözüm:** Gemini çağrısı kaldırıldı, `generateLocalQuiz` fonksiyonu eklendi.
+  - Kelime havuzundan 20 kelime rastgele seçilir.
+  - Örnek cümle varsa cloze (boşluk doldurma) formatı kullanılır: `"The student was ______ about the results"`.
+  - Yoksa `"[Türkçe anlam] anlamına gelen İngilizce kelime?"` sorusu oluşturulur.
+  - 5 şık: 1 doğru + 4 rastgele yanlış kelime.
+- `startQuiz` artık `async` değil; sorular state'e yazılıp quiz anında başlıyor.
+
+### 16. İstatistikler Header'a Taşındı
+- Seçim ızgarasındaki `📊 İstatistikler` kartı kaldırıldı (ızgara 7→6 kart).
+- Header navigasyonuna 🏠 ile Yükle arasına `📊` ikon butonu eklendi (her zaman erişilebilir).
+- `Statistics` bileşenine `onBack` prop'u ve "← Geri Dön" butonu eklendi.
+
+### 17. Flashcards Mobil Responsive Düzeltmesi
+- Kart yüksekliği: `h-[380px]` → `h-[430px]` / `sm:h-[450px]` → `sm:h-[500px]` (taşma eşiği yükseltildi).
+- Ön yüz kelime boyutu: `text-4xl sm:text-6xl` → `text-3xl sm:text-5xl`; uzun kelimelerde `break-all` eklendi.
+- Arka yüz padding: `p-6` → `p-4` (mobil).
+- Arka yüz anlam: `text-3xl sm:text-5xl` → `text-2xl sm:text-4xl`.
+- Arka yüz örnek cümle konteyneri: `p-4` → `p-3` / `space-y-4` → `space-y-2` (mobil).
+- Örnek cümle metin boyutu: `text-lg sm:text-xl` → `text-sm sm:text-xl`.
+- Sonuç: İçerik 430px karta sığıyor, mobilde scroll zorunluluğu ortadan kalktı.
+
+### 18. Quiz Şık Metni Okunabilirlik Düzeltmesi
+- Şık metni: `text-xs sm:text-lg` → `text-sm sm:text-lg`.
+- Mobilde 12px olan metin 14px'e çıktı; özellikle uzun İngilizce kelimeler mobilde okunabilir hale geldi.
+
+---
+
+## Güncellenen Dosyalar (2. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `App.tsx` | GÜNCELLENDİ — yerel quiz, header 📊, stats kartı kaldırıldı |
+| `components/Statistics.tsx` | GÜNCELLENDİ — onBack prop, geri dön butonu |
+| `components/Flashcards.tsx` | GÜNCELLENDİ — responsive yükseklik ve font düzeltmeleri |
+| `components/Quiz.tsx` | GÜNCELLENDİ — şık metin boyutu düzeltmesi |

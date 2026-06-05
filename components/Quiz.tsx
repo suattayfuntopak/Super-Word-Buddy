@@ -174,7 +174,7 @@ const Quiz: React.FC<QuizProps> = ({ questions, onClose }) => {
                   </span>
                   <div className="flex-1 pr-16 sm:pr-32 break-words leading-tight flex flex-col">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs sm:text-lg">{option.text}</span>
+                      <span className="text-sm sm:text-lg">{option.text}</span>
                     </div>
                   </div>
                   {isAnswered && isCorrect && <span className="text-xl sm:text-2xl animate-bounce">✓</span>}
