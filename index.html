@@ -13,11 +13,12 @@
     <meta name="apple-mobile-web-app-title" content="Word Buddy">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <script>tailwind.config = { darkMode: 'class' }</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        body { 
-          font-family: 'Nunito', sans-serif; 
+        body {
+          font-family: 'Nunito', sans-serif;
           background-color: #fdfbf7;
           touch-action: manipulation;
         }
@@ -25,27 +26,96 @@
         .backface-hidden { backface-visibility: hidden; }
         .rotate-y-180 { transform: rotateY(180deg); }
         .transform-style-3d { transform-style: preserve-3d; }
-        
-        /* Custom scrollbar for a cleaner look */
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* Prevent input zoom on focus for mobile */
-        input, select, textarea {
-          font-size: 16px !important;
+        input, select, textarea { font-size: 16px !important; }
+
+        /* ===== DARK MODE GLOBAL OVERRIDES ===== */
+        html.dark { color-scheme: dark; }
+        html.dark body { background-color: #0f172a; color: #e2e8f0; }
+
+        /* Surfaces */
+        html.dark .bg-white { background-color: #1e293b !important; }
+        html.dark .bg-white\/95, html.dark .bg-white\/90 { background-color: rgba(30,41,59,0.95) !important; }
+        html.dark .bg-\[#fdfbf7\] { background-color: #0f172a !important; }
+        html.dark .bg-slate-50 { background-color: #1e293b !important; }
+        html.dark .bg-slate-100 { background-color: #334155 !important; }
+
+        /* Tinted backgrounds */
+        html.dark .bg-indigo-50 { background-color: rgba(79,70,229,0.15) !important; }
+        html.dark .bg-purple-50 { background-color: rgba(168,85,247,0.12) !important; }
+        html.dark .bg-green-50 { background-color: rgba(34,197,94,0.12) !important; }
+        html.dark .bg-red-50 { background-color: rgba(239,68,68,0.12) !important; }
+        html.dark .bg-yellow-50 { background-color: rgba(234,179,8,0.10) !important; }
+        html.dark .bg-amber-50 { background-color: rgba(245,158,11,0.10) !important; }
+        html.dark .bg-blue-50 { background-color: rgba(59,130,246,0.12) !important; }
+        html.dark .bg-orange-50 { background-color: rgba(249,115,22,0.10) !important; }
+        html.dark .bg-emerald-50 { background-color: rgba(16,185,129,0.10) !important; }
+        html.dark .bg-violet-50 { background-color: rgba(139,92,246,0.12) !important; }
+        html.dark .bg-teal-50 { background-color: rgba(20,184,166,0.10) !important; }
+        html.dark .bg-pink-50 { background-color: rgba(236,72,153,0.10) !important; }
+        html.dark .bg-cyan-50 { background-color: rgba(6,182,212,0.10) !important; }
+
+        /* Text */
+        html.dark .text-slate-900 { color: #f1f5f9 !important; }
+        html.dark .text-slate-800 { color: #e2e8f0 !important; }
+        html.dark .text-slate-700 { color: #cbd5e1 !important; }
+        html.dark .text-slate-600 { color: #94a3b8 !important; }
+        html.dark .text-slate-500 { color: #64748b !important; }
+        html.dark .text-slate-400 { color: #475569 !important; }
+        html.dark .text-slate-300 { color: #334155 !important; }
+
+        /* Borders */
+        html.dark .border-slate-50  { border-color: #1e293b !important; }
+        html.dark .border-slate-100 { border-color: #334155 !important; }
+        html.dark .border-slate-200 { border-color: #475569 !important; }
+        html.dark .border-white     { border-color: #475569 !important; }
+        html.dark .divide-slate-100 > * + * { border-color: #334155 !important; }
+
+        /* Inputs */
+        html.dark input:not([type="checkbox"]):not([type="radio"]),
+        html.dark textarea,
+        html.dark select {
+          background-color: #1e293b !important;
+          color: #e2e8f0 !important;
+          border-color: #475569 !important;
         }
+        html.dark input::placeholder,
+        html.dark textarea::placeholder { color: #475569 !important; }
+
+        /* Shadows in dark mode */
+        html.dark .shadow-sm  { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.6) !important; }
+        html.dark .shadow     { box-shadow: 0 1px 3px 0 rgba(0,0,0,0.6) !important; }
+        html.dark .shadow-md  { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.6) !important; }
+        html.dark .shadow-lg  { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.7) !important; }
+        html.dark .shadow-xl  { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.8) !important; }
+        html.dark .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.9) !important; }
+        html.dark .shadow-indigo-100 { box-shadow: none !important; }
+        html.dark .shadow-orange-100 { box-shadow: none !important; }
+
+        /* Header & Footer */
+        html.dark header {
+          background-color: rgba(15,23,42,0.95) !important;
+          border-color: #1e293b !important;
+        }
+        html.dark footer {
+          background-color: #0f172a !important;
+          border-color: #1e293b !important;
+        }
+
+        /* Scrollbar dark */
+        html.dark ::-webkit-scrollbar-track { background: #1e293b; }
+        html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* UserMenu dropdown dark */
+        html.dark .bg-gradient-to-br.from-indigo-50 { background: linear-gradient(135deg, rgba(79,70,229,0.2), rgba(168,85,247,0.15)) !important; }
     </style>
 <script type="importmap">
 {

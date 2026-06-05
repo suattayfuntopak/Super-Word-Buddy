@@ -161,6 +161,75 @@
 
 ---
 
+## Güncelleme — 2026-06-05 (4. Oturum — Tema, Dil, Kullanıcı Menüsü, 3 Yeni Özellik)
+
+### 25. Dark / Light / System Tema
+- `utils/theme.ts` eklendi: `getStoredTheme`, `storeTheme`, `applyTheme`, `resolveTheme` yardımcıları.
+- `index.html`'e `tailwind.config = { darkMode: 'class' }` eklendi (CDN öncesi).
+- `index.html` `<style>` bloğuna kapsamlı dark mode CSS override'ları eklendi: bg, text, border, shadow, input, header/footer, scrollbar.
+- `html.dark` sınıfı `applyTheme()` ile toggle ediliyor; sistem tercihi değişince otomatik güncelleniyor.
+- Tercih `localStorage` üzerinde `swb_theme` anahtarında saklanıyor.
+
+### 26. TR / EN Dil Desteği
+- `utils/i18n.ts` eklendi: `translations.tr` ve `translations.en` nesneleri (50+ anahtar).
+- `App.tsx`'teki tüm sabit metinler `t.xxx` referansına taşındı.
+- Dil değişimi anında tüm arayüz güncelleniyor (React state).
+- Tercih `localStorage` üzerinde `swb_lang` anahtarında saklanıyor.
+
+### 27. Sağ Üst Köşe Kullanıcı Menüsü
+- `components/UserMenu.tsx` oluşturuldu.
+- Header'daki kullanıcı adı + Çıkış butonu → tek avatar butonu (baş harfi) ile değiştirildi.
+- Dropdown içeriği:
+  - Kullanıcı adı + e-posta (avatar + gradient header)
+  - 🎨 **Tema seçici**: ☀️ Açık / 🌙 Koyu / 💻 Sistem (3 buton, aktif indigo)
+  - 🌍 **Dil seçici**: 🇹🇷 Türkçe / 🇺🇸 English (flagcdn bayrakları)
+  - 🎯 **Günlük hedef ayarı**: −/+ ile 1-20 arası aktivite/gün (bildirim izni isteniyor)
+  - 🚪 Çıkış Yap butonu
+- Dışarı tıklanınca kapanıyor (`useEffect` + `mousedown` listener).
+
+### 28. Favori Kelime Çalışma Modu (Öneri A)
+- Seçim grid'ine tam genişlik `❤️ Favori Kelimelerim` kartı eklendi (7. kart, `col-span-full`).
+- Kartın sağ köşesinde kaç favori olduğu gösteriliyor.
+- Tıklanınca modal açılıyor: **📚 Flashcards** veya **🎓 Quiz** seçimi.
+- Flashcard: tüm favoriler + zorluk sıralı. Quiz: en az 5 favori gerekli, ağırlıklı örnekleme.
+- Favori yoksa hata mesajı gösteriliyor.
+
+### 29. Kelime Etiketleme / Gruplama (Öneri B)
+- `utils/wordTags.ts` eklendi: localStorage tabanlı `swb_tags_{userId}` = `{wordId: string[]}`.
+- Kelime listesinde her kartta 🏷️ butonu eklendi.
+- Tıklanınca inline etiket editörü açılıyor:
+  - Mevcut etiketler chip olarak + `×` kaldırma butonu.
+  - Hızlı ekleme: IELTS, TOEFL, Academic, Business, Chapter 1/2, Daily, Advanced.
+  - Özel etiket: text input + Enter ile ekle.
+- Etiketler her kart altında indigo chip olarak görünüyor.
+- Liste başında yatay kaydırmalı **etiket filtresi** çubuğu: "Tümü" + kullanıcının oluşturduğu tüm etiketler.
+- `filteredVocab` hesaplamasına `activeTagFilter` eklendi.
+
+### 30. Günlük Hedef & Tarayıcı Bildirimleri (Öneri C)
+- `utils/dailyGoal.ts` eklendi: `getDailyGoal`, `setDailyGoal`, `requestNotificationPermission`, `sendGoalNotification`.
+- Kullanıcı menüsünden günlük hedef (1-20) ayarlanabiliyor; ilk ayarlamada bildirim izni isteniyor.
+- Her aktivite kaydından sonra `checkDailyGoal()` çalışıyor:
+  - Bugünkü aktivite sayısı hedefe ulaştığında: tarayıcı bildirimi (`Notification API`) gönderiliyor.
+  - Uygulama açıksa 6 saniyelik animasyonlu "hedefe ulaştın" toast'u gösteriliyor.
+- **İstatistikler** sayfasına günlük hedef progress bar eklendi: bugün/hedef + renk çubuğu.
+
+---
+
+## Güncellenen / Eklenen Dosyalar (4. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `utils/theme.ts` | YENİ — tema yönetimi |
+| `utils/i18n.ts` | YENİ — TR/EN çeviriler |
+| `utils/wordTags.ts` | YENİ — localStorage etiket sistemi |
+| `utils/dailyGoal.ts` | YENİ — günlük hedef + bildirim |
+| `components/UserMenu.tsx` | YENİ — kullanıcı dropdown menüsü |
+| `index.html` | GÜNCELLENDİ — Tailwind dark config + dark mode CSS |
+| `App.tsx` | GÜNCELLENDİ — tema/dil/hedef state, favori mod, etiketleme, UserMenu |
+| `components/Statistics.tsx` | GÜNCELLENDİ — günlük hedef progress bar, lang/dailyGoal prop |
+
+---
+
 ## Güncelleme — 2026-06-05 (2. Oturum)
 
 ### 15. Quiz Anlık Yükleme (Gemini → Yerel Üretim)

@@ -2,11 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { VocabularyItem } from '../types';
+import type { Lang } from '../utils/i18n';
 
 interface StatisticsProps {
   userId: string;
   vocabItems: VocabularyItem[];
   onBack: () => void;
+  dailyGoal?: number;
+  lang?: Lang;
 }
 
 interface ActivityLog {
@@ -16,7 +19,7 @@ interface ActivityLog {
   created_at: string;
 }
 
-const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack }) => {
+const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dailyGoal = 3, lang = 'tr' }) => {
   const [loading, setLoading] = useState(true);
   const [wordStats, setWordStats] = useState({ total: 0, addedByMe: 0 });
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -179,6 +182,36 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack }) =
               <span className="text-[10px] sm:text-xs font-bold uppercase opacity-80 mt-1 block">Genel Başarı</span>
               <span className="text-[9px] opacity-60 font-bold">Quiz + Yazma</span>
             </div>
+          </div>
+
+          {/* Daily goal progress */}
+          <div className="col-span-1 md:col-span-3 bg-white p-5 sm:p-8 rounded-[2rem] shadow-lg border border-slate-100">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-xl">🎯</div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-sm sm:text-base">{lang === 'tr' ? 'Günlük Hedef' : 'Daily Goal'}</h4>
+                  <p className="text-[10px] sm:text-xs text-slate-400 font-bold">{lang === 'tr' ? 'Bugünkü ilerleme' : "Today's progress"}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-black text-slate-800">{todayCount}</span>
+                <span className="text-slate-400 font-bold text-sm"> / {dailyGoal}</span>
+              </div>
+            </div>
+            <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-700"
+                style={{ width: `${Math.min(100, (todayCount / dailyGoal) * 100)}%` }}
+              />
+            </div>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-bold mt-2 text-right">
+              {todayCount >= dailyGoal
+                ? (lang === 'tr' ? '🏆 Hedefe ulaştın!' : '🏆 Goal reached!')
+                : lang === 'tr'
+                  ? `${dailyGoal - todayCount} aktivite kaldı`
+                  : `${dailyGoal - todayCount} activities to go`}
+            </p>
           </div>
 
           {/* Flashcard count */}
