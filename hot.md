@@ -652,16 +652,27 @@
 
 ---
 
+## Güncelleme — 2026-06-06 (12. Oturum)
+
+### Service Worker Anında Güncelleme
+
+- **Sorun:** Yeni deploy sonrası service worker eski bundle'ı cache'den sunmaya devam ediyordu; kullanıcı tüm sekmeleri kapatıp açmadan değişiklikleri göremiyordu.
+- **Çözüm:** `sw.ts`'e `install` → `skipWaiting()` ve `activate` → `clients.claim()` eklendi.
+  - Yeni SW indirilir indirilmez aktif oluyor, tab kapatmaya gerek kalmıyor.
+  - Bir sonraki sayfa yüklemesinde yeni bundle hemen servis ediliyor.
+
+---
+
+## Güncellenen Dosyalar (12. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `sw.ts` | GÜNCELLENDİ — `skipWaiting` + `clients.claim` ile anında SW aktivasyonu |
+
+---
+
 ## Önerilen Sonraki Adımlar
 
 1. **schema.sql yeniden çalıştır:** Avatar bucket ve `user_word_stats` tablosu için güncellenmiş `schema.sql`'i Supabase SQL Editörü'nde çalıştır.
 2. **Progress export:** İstatistikleri CSV olarak dışa aktarma butonu.
 3. **Writing word stats:** Yazma alıştırmalarında da `logWordResults` çağrısı eklenerek kelime analizi genişletilir.
-| `public/icons/icon-192.png` | YENİ — PWA ikonu |
-| `public/icons/icon-512.png` | YENİ — PWA ikonu |
-| `public/icons/apple-touch-icon.png` | YENİ — iOS ikonu |
-| `vite.config.ts` | GÜNCELLENDİ — VitePWA plugin |
-| `index.html` | GÜNCELLENDİ — PWA meta etiketleri |
-| `App.tsx` | GÜNCELLENDİ — session kalıcılığı, favoriler, difficulty, liste filtreleme |
-| `components/Quiz.tsx` | GÜNCELLENDİ — yanlış kelime takibi, sonuç ekranı |
-| `components/Statistics.tsx` | GÜNCELLENDİ — streak, günlük sayaç, genel başarı |
