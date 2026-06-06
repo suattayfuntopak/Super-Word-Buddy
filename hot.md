@@ -856,6 +856,28 @@
 
 ---
 
+## Güncelleme — 2026-06-06 (17. Oturum — Leaderboard & Arayüz Simetrisi)
+
+### 85. İstatistikler Kartı Panoya Taşındı
+- **Sorun:** İstatistiklere ulaşmak için kullanılan 📊 butonu üst header içinde sıkışık ve mobilde az belirgindi.
+- **Çözüm:** Header'daki 📊 butonu kaldırıldı. İstatistikler (Statistics) ana panodaki Seçim Izgarası'na (Selection Grid) 9. kart olarak en alta ve en sağa eklendi.
+
+### 86. Kart Tasarımlarının Eşitlenmesi ve İsimlendirme
+- **Sorun:** Favoriler ve Filtreler kartı `col-span-full` veya farklı genişlikte olduğu için ızgaradaki diğer kartlardan farklı görünüyordu ve asimetrik bir yapı vardı.
+- **Çözüm:** `col-span` genişlemeleri kaldırıldı. Favori Kelimelerim, Akıllı Filtreler ve İstatistikler kartları diğer 6 kartla birebir aynı boyuta getirildi. Böylece masaüstünde simetrik, dengeli ve şık bir 3x3 ızgara yapısı elde edildi.
+- **İsimlendirme:** Akıllı Çalışma Filtresi (Smart Study Filter) ibaresi TR'de **Akıllı Filtreler**, EN'de **Smart Filters** olarak kısaltılıp güncellendi.
+
+---
+
+## Güncellenen / Eklenen Dosyalar (17. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `utils/i18n.ts` | GÜNCELLENDİ — `studyFilterCard` ismi `Akıllı Filtreler` / `Smart Filters` olarak güncellendi |
+| `App.tsx` | GÜNCELLENDİ — header 📊 butonu kaldırıldı, alt ızgaradaki Favoriler, Filtreler ve İstatistikler kartları standart boyutlara getirilip 3x3 hizalandı |
+
+---
+
 ## Önerilen Sonraki Adımlar (Güncel)
 
 1. **schema.sql yeniden çalıştır:** `profiles` tablosu, triggerlar ve `user_study_filters` tablosu için güncellenmiş `schema.sql`'i Supabase SQL Editörü'de çalıştırın.
@@ -863,5 +885,6 @@
 3. **Toplu silme:** Bulk seçim moduna silme aksiyonu da eklenebilir (ownership kontrolü ile).
 4. **SW PeriodicSync:** Chromium'da `periodicsync` API ile uygulama kapalıyken de zamanlanmış bildirim mümkün.
 5. **DB → localStorage spaced repetition sync:** Quiz'de `user_word_stats` verisi `wordDifficulty` localStorage'ına da yansıtılırsa çapraz cihaz spaced repetition sağlanır.
+
 
 

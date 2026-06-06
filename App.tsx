@@ -644,11 +644,6 @@ const App: React.FC = () => {
                   className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-indigo-50 text-xl sm:text-2xl transition-all shadow-inner border border-slate-100"
                   title={t.homeMenu}
                 >🏠</button>
-                <button
-                  onClick={() => setState('stats')}
-                  className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-violet-50 text-xl sm:text-2xl transition-all shadow-inner border border-slate-100"
-                  title={t.statsTitle}
-                >📊</button>
                 <button onClick={() => setState('upload')} className="bg-indigo-600 text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black shadow-lg hover:bg-indigo-700 transition-all whitespace-nowrap">
                   {t.uploadBtn}
                 </button>
@@ -820,49 +815,36 @@ const App: React.FC = () => {
                 <p className="text-sm text-white/70 mt-2 font-bold">{t.gamesSub}</p>
               </div>
 
-              {/* Favorites — side-by-side card */}
+              {/* Favorites Card */}
               <div
                 onClick={() => favoriteIds.size > 0 ? setShowFavoritesModeModal(true) : setError(t.noFavorites)}
-                className="col-span-1 sm:col-span-1 lg:col-span-2 bg-gradient-to-r from-pink-500 to-rose-600 p-6 sm:p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-between text-white group"
+                className="bg-gradient-to-br from-pink-500 to-rose-600 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white"
               >
-                <div className="flex items-center space-x-5">
-                  <div className="text-4xl sm:text-5xl group-hover:animate-bounce">❤️</div>
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-black">{t.favoritesCard}</h3>
-                    <p className="text-sm text-white/70 font-bold">{t.favoritesSub}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-3xl sm:text-4xl font-black opacity-90">{favoriteIds.size}</span>
-                  <p className="text-xs text-white/60 font-bold uppercase tracking-wider">{lang === 'tr' ? 'kelime' : 'words'}</p>
-                </div>
+                <div className="text-5xl mb-4 group-hover:animate-bounce">❤️</div>
+                <h3 className="text-2xl font-black text-slate-100">{t.favoritesCard}</h3>
+                <p className="text-sm text-white/70 mt-2 font-bold">{t.favoritesSub} ({favoriteIds.size})</p>
               </div>
 
-              {/* Study Filter — side-by-side card */}
+              {/* Study Filter Card */}
               <div
                 onClick={() => setIsStudyFilterModalOpen(true)}
-                className="col-span-1 sm:col-span-1 lg:col-span-1 bg-gradient-to-r from-violet-500 to-indigo-600 p-6 sm:p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
+                className="bg-gradient-to-br from-violet-500 to-indigo-600 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white"
               >
-                <div className="flex items-center space-x-5">
-                  <div className="text-4xl sm:text-5xl group-hover:animate-bounce">🔍</div>
-                  <div className="text-left">
-                    <h3 className="text-xl sm:text-2xl font-black">{t.studyFilterCard}</h3>
-                    <p className="text-xs text-white/75 mt-1 font-bold line-clamp-1">{t.studyFilterCardDesc}</p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  {activeStudyFilter ? (
-                    <>
-                      <span className="text-2xl sm:text-3xl font-black text-amber-300 animate-pulse">{getFilteredStudyWords().length}</span>
-                      <p className="text-[10px] text-amber-200 font-black uppercase tracking-wider">{t.activeFilterCardLabel}</p>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-2xl sm:text-3xl font-black opacity-90">{vocabItems.length}</span>
-                      <p className="text-[10px] text-white/60 font-black uppercase tracking-wider">{lang === 'tr' ? 'tümü' : 'all'}</p>
-                    </>
-                  )}
-                </div>
+                <div className="text-5xl mb-4 group-hover:animate-bounce">🔍</div>
+                <h3 className="text-2xl font-black text-slate-100">{t.studyFilterCard}</h3>
+                <p className="text-sm text-white/70 mt-2 font-bold">
+                  {activeStudyFilter ? `${getFilteredStudyWords().length} ${lang === 'tr' ? 'Seçili' : 'Selected'}` : (lang === 'tr' ? 'Tümü' : 'All')}
+                </p>
+              </div>
+
+              {/* Statistics Card */}
+              <div
+                onClick={() => setState('stats')}
+                className="bg-gradient-to-br from-fuchsia-500 to-purple-600 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white"
+              >
+                <div className="text-5xl mb-4 group-hover:animate-bounce">📊</div>
+                <h3 className="text-2xl font-black text-slate-100">{t.statsTitle}</h3>
+                <p className="text-sm text-white/70 mt-2 font-bold">{lang === 'tr' ? 'İlerlemeni Gör' : 'Track Progress'}</p>
               </div>
             </div>
 
