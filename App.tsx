@@ -10,6 +10,7 @@ import { Theme, getStoredTheme, storeTheme, applyTheme } from './utils/theme';
 import { Lang, getStoredLang, storeLang, translations } from './utils/i18n';
 import { getTagsMap, setWordTagsDB, getAllUserTags, loadTagsFromDB } from './utils/wordTags';
 import { getDailyGoal, setDailyGoal, sendGoalNotification } from './utils/dailyGoal';
+import { getTodayGoal, isRestDay } from './utils/weeklySchedule';
 import FileUpload from './components/FileUpload';
 import Flashcards from './components/Flashcards';
 import Quiz from './components/Quiz';
@@ -273,7 +274,9 @@ const App: React.FC = () => {
   };
 
   const checkDailyGoal = async () => {
-    if (!currentUser || dailyGoalValue === 0) return;
+    if (!currentUser) return;
+    const goalForToday = getTodayGoal(currentUser.id, dailyGoalValue);
+    if (goalForToday === 0 || isRestDay(currentUser.id)) return;
     const today = new Date().toISOString().split('T')[0];
     const { count } = await supabase
       .from('user_activities')
@@ -281,8 +284,8 @@ const App: React.FC = () => {
       .eq('user_id', currentUser.id)
       .gte('created_at', `${today}T00:00:00`);
 
-    if (count === dailyGoalValue) {
-      sendGoalNotification(dailyGoalValue, lang);
+    if (count === goalForToday) {
+      sendGoalNotification(goalForToday, lang);
       setGoalReached(true);
       setTimeout(() => setGoalReached(false), 6000);
     }
@@ -921,7 +924,7 @@ const App: React.FC = () => {
           }}
         />}
         {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} lang={lang} onClose={async (score, total) => { await logActivity('writing', score, total); setState('selection'); }} />}
-        {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} onBack={() => setState('selection')} dailyGoal={dailyGoalValue} lang={lang} />}
+        {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} onBack={() => setState('selection')} dailyGoal={getTodayGoal(currentUser?.id || '', dailyGoalValue)} lang={lang} />}
         {state === 'tutor' && <TutorView onBack={() => setState('selection')} />}
         {state === 'games' && <GamesHub vocabItems={vocabItems} lang={lang} onBack={() => setState('selection')} />}
       </main>

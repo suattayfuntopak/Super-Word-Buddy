@@ -1,20 +1,22 @@
 -- Super Word Buddy — Supabase Database Setup
--- Run this entire file in the Supabase SQL Editor once to set up all required tables.
+-- Safe to re-run: uses IF NOT EXISTS + DROP POLICY IF EXISTS
+-- Run this entire file in the Supabase SQL Editor.
 
 -- ============================================================
 -- 1. USER ACTIVITIES (for Statistics / streak / daily goal)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS user_activities (
-  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id     UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  activity_type TEXT      NOT NULL,           -- 'flashcards' | 'quiz' | 'writing'
-  score       INTEGER     NOT NULL DEFAULT 0,
-  total_items INTEGER     NOT NULL DEFAULT 1,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  id            UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id       UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  activity_type TEXT        NOT NULL,  -- 'flashcards' | 'quiz' | 'writing'
+  score         INTEGER     NOT NULL DEFAULT 0,
+  total_items   INTEGER     NOT NULL DEFAULT 1,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE user_activities ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own activities" ON user_activities;
 CREATE POLICY "Users manage own activities"
   ON user_activities FOR ALL
   USING (auth.uid() = user_id)
@@ -33,6 +35,7 @@ CREATE TABLE IF NOT EXISTS user_favorites (
 
 ALTER TABLE user_favorites ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own favorites" ON user_favorites;
 CREATE POLICY "Users manage own favorites"
   ON user_favorites FOR ALL
   USING (auth.uid() = user_id)
@@ -52,6 +55,7 @@ CREATE TABLE IF NOT EXISTS user_word_tags (
 
 ALTER TABLE user_word_tags ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own word tags" ON user_word_tags;
 CREATE POLICY "Users manage own word tags"
   ON user_word_tags FOR ALL
   USING (auth.uid() = user_id)
@@ -73,3 +77,8 @@ CREATE POLICY "Users manage own word tags"
 --   user_id              UUID REFERENCES auth.users(id) ON DELETE SET NULL,
 --   created_at           TIMESTAMPTZ DEFAULT NOW()
 -- );
+
+-- ============================================================
+-- Refresh PostgREST schema cache (run after any table/policy change)
+-- ============================================================
+NOTIFY pgrst, 'reload schema';

@@ -536,13 +536,52 @@
 
 ---
 
+---
+
+## Güncelleme — 2026-06-06 (9. Oturum — Schema Fix + Öğrenme Takvimi)
+
+### 63. Schema.sql İdempotent Hale Getirildi (Kritik Fix)
+- **Sorun:** `CREATE POLICY` politika zaten varsa `42710: policy already exists` hatası veriyordu.
+- **Fix:** Her `CREATE POLICY` öncesine `DROP POLICY IF EXISTS "..." ON ...;` eklendi.
+- `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;` zaten idempotent — problem değildi.
+- Son satıra `NOTIFY pgrst, 'reload schema';` eklendi — SQL çalıştırıldığında PostgREST önbelleği otomatik yenileniyor.
+- Dosya artık istenen kadar yeniden çalıştırılabilir, hata vermez.
+
+### 64. Öğrenme Takvimi — Haftalık Plan
+- `utils/weeklySchedule.ts` oluşturuldu: `getWeeklySchedule`, `setWeeklySchedule`, `getTodayGoal`, `isRestDay`.
+- localStorage `swb_weekly_{userId}` anahtarında `{ [dayIndex]: hedef }` formatında saklanıyor (0=Paz).
+- Değer semantiği: `undefined` = global hedefe bağlı, `0` = dinlenme günü, `1-5` = o güne özgü hedef.
+- **UserMenu — Haftalık Plan Bölümü:** "📅 Haftalık Plan" toggle section eklendi (Günlük Hedef altında).
+  - 7 günlük grid: Paz, Pzt, Sal, Çar, Per, Cum, Cmt (TR/EN çevrili).
+  - Her güne tıklayarak 0→1→2→3→4→5→0 döngüsüyle hedef ayarlanıyor.
+  - `·` = global hedefe bağlı (ayarlanmamış), `💤` = dinlenme günü.
+  - Bugün: indigo border ile vurgulanan; aktif günler: yeşil tonda.
+- **App.tsx:** `getTodayGoal(userId, dailyGoalValue)` ile günlük hedef dinamik hesaplanıyor.
+  - `checkDailyGoal`: haftalık plandan bugünün hedefini alıyor; dinlenme günü → bildirim gönderilmiyor.
+  - Statistics prop: `dailyGoal={getTodayGoal(currentUser?.id || '', dailyGoalValue)}` — bugünün gerçek hedefini alıyor.
+- **Statistics.tsx:** `dailyGoal === 0` (dinlenme günü) durumunda progress bar yerine "💤 Bugün dinlenme günü" metni gösteriliyor.
+
+---
+
+## Güncellenen Dosyalar (9. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `supabase/schema.sql` | GÜNCELLENDİ — `DROP POLICY IF EXISTS` + `NOTIFY pgrst` eklendi, tekrar çalıştırılabilir |
+| `utils/weeklySchedule.ts` | YENİ — haftalık plan utility |
+| `components/UserMenu.tsx` | GÜNCELLENDİ — Haftalık Plan bölümü |
+| `App.tsx` | GÜNCELLENDİ — `getTodayGoal` entegrasyonu |
+| `components/Statistics.tsx` | GÜNCELLENDİ — dinlenme günü UI |
+
+---
+
 ## Önerilen Sonraki Adımlar
 
-1. **Supabase kurulumu:** `supabase/schema.sql` dosyasını Supabase SQL Editörü'nde bir kez çalıştır — `user_activities`, `user_favorites`, `user_word_tags` tabloları oluşur.
+1. **Supabase kurulumu:** `supabase/schema.sql` dosyasını (artık idempotent) doğru Supabase projesinde SQL Editörü'nde çalıştır.
 2. **Avatar bucket:** Supabase Dashboard'da `avatars` adlı public bucket oluştur (profil fotoğrafı için).
-3. **Öğrenme takvimi:** Haftanın günlerine göre hedef belirleme (ör. hafta içi 5, hafta sonu 2).
-4. **Progress export:** İstatistikleri PDF/CSV olarak dışa aktarma.
-5. **Quiz yanlış kelime analizi (DB bazlı):** Şu an spaced repetition localStorage tabanlı; `user_activities` tablosuna word-level data eklenirse daha detaylı analitik mümkün.
+3. **Progress export:** İstatistikleri PDF/CSV olarak dışa aktarma.
+4. **Quiz word-level DB analitik:** `user_activities` tablosuna kelime bazlı log eklenerek daha derin analitik mümkün olur.
+5. **Bildirim kanalı:** Günlük hedef tostu'na ek olarak push notification entegrasyonu (Web Push API).
 | `public/icons/icon-192.png` | YENİ — PWA ikonu |
 | `public/icons/icon-512.png` | YENİ — PWA ikonu |
 | `public/icons/apple-touch-icon.png` | YENİ — iOS ikonu |

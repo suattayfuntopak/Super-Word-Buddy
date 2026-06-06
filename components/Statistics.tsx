@@ -44,6 +44,7 @@ const ST = {
     dailyGoalSub: 'Bugünkü ilerleme',
     goalReached: '🏆 Hedefe ulaştın!',
     activitiesLeft: (n: number) => `${n} aktivite kaldı`,
+    restDay: '💤 Bugün dinlenme günü',
     flashcards: 'Flashcard Görüntüleme',
     flashcardsUnit: 'kart',
     quizRate: 'Test Başarı Oranı',
@@ -86,6 +87,7 @@ const ST = {
     dailyGoalSub: "Today's progress",
     goalReached: '🏆 Goal reached!',
     activitiesLeft: (n: number) => `${n} activities to go`,
+    restDay: '💤 Rest day',
     flashcards: 'Flashcard Views',
     flashcardsUnit: 'cards',
     quizRate: 'Quiz Success Rate',
@@ -432,19 +434,31 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-black text-slate-800">{todayCount}</span>
-                <span className="text-slate-400 font-bold text-sm"> / {dailyGoal}</span>
+                {dailyGoal === 0 ? (
+                  <span className="text-lg">💤</span>
+                ) : (
+                  <>
+                    <span className="text-2xl font-black text-slate-800">{todayCount}</span>
+                    <span className="text-slate-400 font-bold text-sm"> / {dailyGoal}</span>
+                  </>
+                )}
               </div>
             </div>
-            <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-700"
-                style={{ width: `${Math.min(100, (todayCount / dailyGoal) * 100)}%` }}
-              />
-            </div>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-bold mt-2 text-right">
-              {todayCount >= dailyGoal ? t.goalReached : t.activitiesLeft(Math.max(0, dailyGoal - todayCount))}
-            </p>
+            {dailyGoal === 0 ? (
+              <p className="text-sm font-black text-slate-400 text-center py-2">{t.restDay}</p>
+            ) : (
+              <>
+                <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-700"
+                    style={{ width: `${Math.min(100, (todayCount / dailyGoal) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] sm:text-xs text-slate-400 font-bold mt-2 text-right">
+                  {todayCount >= dailyGoal ? t.goalReached : t.activitiesLeft(Math.max(0, dailyGoal - todayCount))}
+                </p>
+              </>
+            )}
           </div>
 
           {/* 7-day activity trend */}

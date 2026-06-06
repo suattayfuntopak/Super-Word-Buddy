@@ -3,6 +3,7 @@ import { Theme } from '../utils/theme';
 import { Lang } from '../utils/i18n';
 import { requestNotificationPermission } from '../utils/dailyGoal';
 import { supabase } from '../services/supabaseClient';
+import { WeeklySchedule, getWeeklySchedule, setWeeklySchedule } from '../utils/weeklySchedule';
 
 interface UserMenuProps {
   userName: string;
@@ -30,8 +31,26 @@ const UserMenu: React.FC<UserMenuProps> = ({
   const [accountMsg, setAccountMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [localAvatarUrl, setLocalAvatarUrl] = useState(avatarUrl);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [schedule, setSchedule] = useState<WeeklySchedule>({});
   const ref = useRef<HTMLDivElement>(null);
   const isTr = lang === 'tr';
+
+  useEffect(() => {
+    if (userId) setSchedule(getWeeklySchedule(userId));
+  }, [userId]);
+
+  const updateSchedule = (dayIndex: number, value: number) => {
+    const updated = { ...schedule, [dayIndex]: value };
+    setSchedule(updated);
+    setWeeklySchedule(userId, updated);
+  };
+
+  const DAY_LABELS = isTr
+    ? ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const todayIdx = new Date().getDay();
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -208,6 +227,60 @@ const UserMenu: React.FC<UserMenuProps> = ({
                   className="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-600 font-black flex items-center justify-center border border-slate-100 shadow-sm transition-all"
                 >+</button>
               </div>
+            </div>
+
+            {/* Weekly Schedule */}
+            <div className="border-t border-slate-100 pt-3">
+              <button
+                onClick={() => setShowSchedule(v => !v)}
+                className="w-full flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors py-1"
+              >
+                <span>📅 {isTr ? 'Haftalık Plan' : 'Weekly Plan'}</span>
+                <span className="text-slate-300">{showSchedule ? '▲' : '▼'}</span>
+              </button>
+              {showSchedule && (
+                <div className="mt-2 space-y-2">
+                  <p className="text-[9px] text-slate-400 font-bold">
+                    {isTr
+                      ? 'Güne özel hedef. Tıkla: 0 (dinlenme) → 1 → 2 → ... → 5'
+                      : 'Per-day goal. Tap: 0 (rest) → 1 → 2 → ... → 5'}
+                  </p>
+                  <div className="grid grid-cols-7 gap-1">
+                    {DAY_LABELS.map((label, idx) => {
+                      const val = schedule[idx] !== undefined ? schedule[idx]! : -1;
+                      const isToday = idx === todayIdx;
+                      const isRest = val === 0;
+                      const display = val === -1 ? '·' : val === 0 ? '💤' : String(val);
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            const cur = schedule[idx] !== undefined ? schedule[idx]! : 0;
+                            updateSchedule(idx, cur >= 5 ? 0 : cur + 1);
+                          }}
+                          className={`flex flex-col items-center py-1.5 rounded-xl border text-center transition-all ${
+                            isToday
+                              ? 'border-indigo-400 bg-indigo-50'
+                              : isRest
+                              ? 'border-slate-100 bg-slate-50 opacity-50'
+                              : val === -1
+                              ? 'border-slate-100 bg-slate-50'
+                              : 'border-emerald-200 bg-emerald-50'
+                          }`}
+                        >
+                          <span className={`text-[8px] font-black ${isToday ? 'text-indigo-600' : 'text-slate-400'}`}>{label}</span>
+                          <span className={`text-sm font-black mt-0.5 leading-none ${isRest ? 'text-slate-300' : isToday ? 'text-indigo-700' : 'text-emerald-700'}`}>
+                            {display}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[9px] text-slate-400 font-medium text-center">
+                    {isTr ? '· = global hedefe bağlı' : '· = follows global goal'}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Account settings */}
