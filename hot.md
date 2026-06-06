@@ -796,11 +796,43 @@
 
 ---
 
+---
+
+## Güncelleme — 2026-06-06 (15. Oturum — Akıllı Çalışma Filtresi)
+
+### 82. Akıllı Çalışma Filtreleme (Smart Study Filter)
+- **Sorun:** Kullanıcılar global havuzdaki phrasal verb'leri veya belirli etiketleri ayıklayıp sadece onlara odaklanarak Flashcards, Quiz vb. çalışamıyordu.
+- **Çözüm:** Kapsamlı ve esnek bir çalışma filtresi altyapısı kuruldu.
+  - **Kriterler:** Kelime Türleri (dinamik olarak havuzdan çekilen ve kelime sayısını gösteren butonlar), Etiketler (kullanıcı etiketleri ve sayıları), Sadece Favoriler, Kelime/Cümle arama.
+  - **Kayıt ve Sync:** Supabase `user_study_filters` tablosu üzerinden bulut senkronizasyonu; çevrimdışı kullanım için `localStorage` tabanlı fallback ve merge mantığı.
+  - **Çalışma Entegrasyonu:** Flashcards, Quiz, Yazma Kampı ve Oyunlar havuzdaki kelimeleri aktif filtreye göre süzerek çalıştırır.
+  - **Validasyon ve Güvenlik:** Filtre sonucu yetersiz kelime kalan modlar için tıklama engeli ve bilgilendirici hata mesajları (örn: Quiz için en az 5 kelime, Oyunlar için en az 6 kelime koruması).
+  - **Arayüz:** Ana menüde aktif filtre bilgisi sunan, filtre detaylarını listeleyen ve tek tıkla varsayılana sıfırlama (✕) sağlayan indigo banner eklendi.
+  - **Grid Tasarımı:** Favorites card `col-span-1 lg:col-span-2` ve Study Filter card `col-span-1 lg:col-span-1` olarak yan yana konumlandırılarak 8'li grid simetrisi sağlandı.
+
+---
+
+## Güncellenen / Eklenen Dosyalar (15. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `utils/studyFilters.ts` | YENİ — aktif/kayıtlı filtre yönetim ve DB sync utility |
+| `components/StudyFilterModal.tsx` | YENİ — dinamik chip sayaçları ve kayıt yöneticisi barındıran filtre modalı |
+| `types.ts` | GÜNCELLENDİ — filter config ve saved filter tipleri eklendi |
+| `utils/i18n.ts` | GÜNCELLENDİ — TR/EN filtre sistemi metinleri eklendi |
+| `components/Statistics.tsx` | GÜNCELLENDİ — `SETUP_SQL` tablosuna `user_study_filters` eklendi |
+| `App.tsx` | GÜNCELLENDİ — session entegrasyonu, study mode filtre süzgeçleri, modal mount, responsive grid düzeni |
+| `supabase/schema.sql` | GÜNCELLENDİ — `user_study_filters` tablosu ve RLS politikaları eklendi |
+| `tsconfig.json` | GÜNCELLENDİ — `ImportMeta` env tip hataları için `vite/client` eklendi |
+
+---
+
 ## Önerilen Sonraki Adımlar (Güncel)
 
-1. **schema.sql yeniden çalıştır:** Avatar bucket ve `user_word_stats` tablosu için güncellenmiş SQL'i Supabase SQL Editörü'nde çalıştır.
+1. **schema.sql yeniden çalıştır:** `user_study_filters` tablosu ve politikaları için güncellenmiş `schema.sql`'i Supabase SQL Editörü'nde çalıştırın.
 2. **Kullanıcı adı Leaderboard'da:** `auth.users` tablosundan display_name/email prefix çekilirse katkıcılar daha anlamlı görünür (RLS izniyle).
 3. **CSV + Aktivite Logları:** Aktivite geçmişi (tip, tarih, skor) da CSV'ye dahil edilebilir.
 4. **Toplu silme:** Bulk seçim moduna silme aksiyonu da eklenebilir (ownership kontrolü ile).
 5. **SW PeriodicSync:** Chromium'da `periodicsync` API ile uygulama kapalıyken de zamanlanmış bildirim mümkün.
 6. **DB → localStorage spaced repetition sync:** Quiz'de `user_word_stats` verisi `wordDifficulty` localStorage'ına da yansıtılırsa çapraz cihaz spaced repetition sağlanır.
+

@@ -6,6 +6,7 @@ interface State {
 }
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, State> {
+  props!: { children: React.ReactNode };
   state: State = { hasError: false };
 
   static getDerivedStateFromError(): State {

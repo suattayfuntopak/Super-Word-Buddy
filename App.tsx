@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AppState, VocabularyItem, QuizQuestion, QuizOption, User } from './types';
+import { AppState, VocabularyItem, QuizQuestion, QuizOption, User, StudyFilterConfig } from './types';
 import { analyzeVocabulary } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 import { speak } from './utils/speak';
@@ -12,6 +12,7 @@ import { getTagsMap, setWordTagsDB, getAllUserTags, loadTagsFromDB } from './uti
 import { getDailyGoal, setDailyGoal, sendGoalNotification, sendStreakNotification, checkAndSendReminderIfDue } from './utils/dailyGoal';
 import { logWordResults } from './utils/wordStats';
 import { getTodayGoal, isRestDay } from './utils/weeklySchedule';
+import { getStoredActiveFilter, storeActiveFilter } from './utils/studyFilters';
 import FileUpload from './components/FileUpload';
 import Flashcards from './components/Flashcards';
 import Quiz from './components/Quiz';
@@ -23,11 +24,21 @@ import CookieConsent from './components/CookieConsent';
 import TutorView from './components/TutorView';
 import GamesHub from './components/GamesHub';
 import UserMenu from './components/UserMenu';
+import StudyFilterModal from './components/StudyFilterModal';
 
 const PERSISTABLE_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
 const HISTORY_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
 const ACTIVITY_STATES: AppState[] = ['learning', 'quiz', 'writing', 'games', 'tutor'];
 const PRESET_TAGS = ['IELTS', 'TOEFL', 'Academic', 'Business', 'Chapter 1', 'Chapter 2', 'Daily', 'Advanced'];
+
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>('home');
@@ -68,6 +79,10 @@ const App: React.FC = () => {
   const [showBulkTagModal, setShowBulkTagModal] = useState(false);
   const [bulkTagInput, setBulkTagInput] = useState('');
 
+  // Study filter states
+  const [activeStudyFilter, setActiveStudyFilter] = useState<StudyFilterConfig | null>(null);
+  const [isStudyFilterModalOpen, setIsStudyFilterModalOpen] = useState(false);
+
   // Header/footer visibility (hide on scroll down / activity states)
   const [headerVisible, setHeaderVisible] = useState(true);
   const lastScrollYRef = useRef(0);
@@ -103,6 +118,8 @@ const App: React.FC = () => {
         fetchAllWords();
         const saved = localStorage.getItem(`swb_state_${user.id}`) as AppState | null;
         setState(saved && PERSISTABLE_STATES.includes(saved) ? saved : 'selection');
+        const savedFilter = getStoredActiveFilter(user.id);
+        setActiveStudyFilter(savedFilter);
       }
     });
 
@@ -118,10 +135,13 @@ const App: React.FC = () => {
         fetchAllWords();
         const saved = localStorage.getItem(`swb_state_${user.id}`) as AppState | null;
         setState(saved && PERSISTABLE_STATES.includes(saved) ? saved : 'selection');
+        const savedFilter = getStoredActiveFilter(user.id);
+        setActiveStudyFilter(savedFilter);
       } else {
         setCurrentUser(null);
         setVocabItems([]);
         setTotalPoolCount(0);
+        setActiveStudyFilter(null);
         setState('home');
       }
     });
@@ -337,14 +357,7 @@ const App: React.FC = () => {
     }
   };
 
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
+
 
   const generateLocalQuiz = (items: VocabularyItem[], userId: string = ''): QuizQuestion[] => {
     const pool: VocabularyItem[] = [];
@@ -379,6 +392,37 @@ const App: React.FC = () => {
     });
   };
 
+  const getFilteredStudyWords = (): VocabularyItem[] => {
+    if (!activeStudyFilter) return vocabItems;
+    return vocabItems.filter(item => {
+      // 1. Word types
+      if (activeStudyFilter.wordTypes.length > 0) {
+        const itemType = item.wordTypeEn?.trim().toLowerCase();
+        const matchesType = activeStudyFilter.wordTypes.some(
+          t => t.toLowerCase() === itemType
+        );
+        if (!matchesType) return false;
+      }
+      // 2. Tags
+      if (activeStudyFilter.tags.length > 0) {
+        const itemTags = wordTagsMap[item.id] || [];
+        const matchesTag = activeStudyFilter.tags.some(t => itemTags.includes(t));
+        if (!matchesTag) return false;
+      }
+      // 3. Favorites Only
+      if (activeStudyFilter.favoritesOnly) {
+        if (!favoriteIds.has(item.id)) return false;
+      }
+      // 4. Search Term
+      if (activeStudyFilter.searchTerm) {
+        const s = activeStudyFilter.searchTerm.toLowerCase().trim();
+        const matchesSearch = item.word.toLowerCase().includes(s) || item.meaning.toLowerCase().includes(s);
+        if (!matchesSearch) return false;
+      }
+      return true;
+    });
+  };
+
   const startFlashcards = (items: VocabularyItem[]) => {
     setFlashcardsItems(items);
     setState('learning');
@@ -386,7 +430,12 @@ const App: React.FC = () => {
 
   const startRegularFlashcards = () => {
     const uid = currentUser?.id || '';
-    const items = shuffleArray(vocabItems)
+    const filtered = getFilteredStudyWords();
+    if (filtered.length === 0) {
+      setError(lang === 'tr' ? 'Seçili filtreye uygun kelime bulunamadı!' : 'No words match the selected filter!');
+      return;
+    }
+    const items = shuffleArray(filtered)
       .slice(0, 40)
       .sort((a, b) => getWordDifficulty(uid, b.id) - getWordDifficulty(uid, a.id));
     startFlashcards(items);
@@ -396,15 +445,19 @@ const App: React.FC = () => {
     const favorites = vocabItems.filter(v => favoriteIds.has(v.id));
     if (favorites.length === 0) { setError(t.noFavorites); return; }
     const uid = currentUser?.id || '';
-    const items = shuffleArray(favorites)
+    const items = shuffleArray<VocabularyItem>(favorites)
       .sort((a, b) => getWordDifficulty(uid, b.id) - getWordDifficulty(uid, a.id));
     startFlashcards(items);
     setShowFavoritesModeModal(false);
   };
 
   const startRegularQuiz = () => {
-    if (vocabItems.length < 5) { setError(t.minWords); return; }
-    const questions = generateLocalQuiz(vocabItems, currentUser?.id || '');
+    const filtered = getFilteredStudyWords();
+    if (filtered.length < 5) {
+      setError(t.notEnoughFilteredWords(5, filtered.length));
+      return;
+    }
+    const questions = generateLocalQuiz(filtered, currentUser?.id || '');
     setQuizQuestions(questions);
     setState('quiz');
   };
@@ -666,6 +719,47 @@ const App: React.FC = () => {
               <p className="text-slate-400 text-base sm:text-lg font-medium">{t.poolDesc(totalPoolCount)}</p>
             </div>
 
+            {/* Active study filter bar */}
+            {activeStudyFilter && (
+              <div className="bg-indigo-50/70 border border-indigo-100/50 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-300">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl sm:text-3xl">🔍</span>
+                  <div className="text-left">
+                    <h4 className="text-sm font-black text-indigo-900 leading-none">{t.activeFilterAlert}</h4>
+                    <p className="text-xs font-bold text-indigo-500 mt-1 max-w-md">
+                      {t.activeFilterGenericDesc(getFilteredStudyWords().length)}: <span className="text-indigo-700 italic">
+                        {(() => {
+                          const parts: string[] = [];
+                          if (activeStudyFilter.wordTypes.length > 0) parts.push(activeStudyFilter.wordTypes.join(', '));
+                          if (activeStudyFilter.tags.length > 0) parts.push(activeStudyFilter.tags.map(tg => `#${tg}`).join(', '));
+                          if (activeStudyFilter.favoritesOnly) parts.push(lang === 'tr' ? 'Favoriler' : 'Favorites');
+                          if (activeStudyFilter.searchTerm) parts.push(`"${activeStudyFilter.searchTerm}"`);
+                          return parts.join(' · ') || (lang === 'tr' ? 'Özel Filtre' : 'Custom Filter');
+                        })()}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setIsStudyFilterModalOpen(true)}
+                    className="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl text-xs font-black transition-colors"
+                  >
+                    ✏️ {lang === 'tr' ? 'Düzenle' : 'Edit'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveStudyFilter(null);
+                      storeActiveFilter(currentUser?.id || '', null);
+                    }}
+                    className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-500 rounded-xl text-xs font-black border border-slate-200 transition-colors"
+                  >
+                    ✕ {lang === 'tr' ? 'Temizle' : 'Clear'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div onClick={startRegularFlashcards} className="bg-gradient-to-br from-blue-400 to-cyan-500 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white">
                 <div className="text-5xl mb-4 group-hover:animate-bounce">📚</div>
@@ -677,7 +771,14 @@ const App: React.FC = () => {
                 <h3 className="text-2xl font-black text-slate-100">{t.quiz}</h3>
                 <p className="text-sm text-white/70 mt-2 font-bold">{t.quizSub}</p>
               </div>
-              <div onClick={() => setState('writing')} className="bg-gradient-to-br from-emerald-400 to-teal-500 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white">
+              <div onClick={() => {
+                const count = getFilteredStudyWords().length;
+                if (count === 0) {
+                  setError(lang === 'tr' ? 'Filtrenizle eşleşen kelime bulunamadı!' : 'No words match your filter!');
+                } else {
+                  setState('writing');
+                }
+              }} className="bg-gradient-to-br from-emerald-400 to-teal-500 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white">
                 <div className="text-5xl mb-4 group-hover:animate-bounce">✍️</div>
                 <h3 className="text-2xl font-black text-slate-100">{t.writing}</h3>
                 <p className="text-sm text-white/70 mt-2 font-bold">{t.writingSub}</p>
@@ -692,16 +793,23 @@ const App: React.FC = () => {
                 <h3 className="text-2xl font-black text-slate-100">{t.tutor}</h3>
                 <p className="text-sm text-white/70 mt-2 font-bold">{t.tutorSub}</p>
               </div>
-              <div onClick={() => setState('games')} className="bg-gradient-to-br from-orange-400 to-pink-500 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white">
+              <div onClick={() => {
+                const count = getFilteredStudyWords().length;
+                if (count < 6) {
+                  setError(t.notEnoughFilteredWords(6, count));
+                } else {
+                  setState('games');
+                }
+              }} className="bg-gradient-to-br from-orange-400 to-pink-500 p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.03] transition-all cursor-pointer text-center group text-white">
                 <div className="text-5xl mb-4 group-hover:animate-bounce">🎮</div>
                 <h3 className="text-2xl font-black text-slate-100">{t.games}</h3>
                 <p className="text-sm text-white/70 mt-2 font-bold">{t.gamesSub}</p>
               </div>
 
-              {/* Favorites — full-width card */}
+              {/* Favorites — side-by-side card */}
               <div
                 onClick={() => favoriteIds.size > 0 ? setShowFavoritesModeModal(true) : setError(t.noFavorites)}
-                className="col-span-1 sm:col-span-2 lg:col-span-3 bg-gradient-to-r from-pink-500 to-rose-600 p-6 sm:p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-between text-white group"
+                className="col-span-1 sm:col-span-1 lg:col-span-2 bg-gradient-to-r from-pink-500 to-rose-600 p-6 sm:p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-between text-white group"
               >
                 <div className="flex items-center space-x-5">
                   <div className="text-4xl sm:text-5xl group-hover:animate-bounce">❤️</div>
@@ -713,6 +821,33 @@ const App: React.FC = () => {
                 <div className="text-right">
                   <span className="text-3xl sm:text-4xl font-black opacity-90">{favoriteIds.size}</span>
                   <p className="text-xs text-white/60 font-bold uppercase tracking-wider">{lang === 'tr' ? 'kelime' : 'words'}</p>
+                </div>
+              </div>
+
+              {/* Study Filter — side-by-side card */}
+              <div
+                onClick={() => setIsStudyFilterModalOpen(true)}
+                className="col-span-1 sm:col-span-1 lg:col-span-1 bg-gradient-to-r from-violet-500 to-indigo-600 p-6 sm:p-8 rounded-[2.5rem] shadow-xl hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
+              >
+                <div className="flex items-center space-x-5">
+                  <div className="text-4xl sm:text-5xl group-hover:animate-bounce">🔍</div>
+                  <div className="text-left">
+                    <h3 className="text-xl sm:text-2xl font-black">{t.studyFilterCard}</h3>
+                    <p className="text-xs text-white/75 mt-1 font-bold line-clamp-1">{t.studyFilterCardDesc}</p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  {activeStudyFilter ? (
+                    <>
+                      <span className="text-2xl sm:text-3xl font-black text-amber-300 animate-pulse">{getFilteredStudyWords().length}</span>
+                      <p className="text-[10px] text-amber-200 font-black uppercase tracking-wider">{t.activeFilterCardLabel}</p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-2xl sm:text-3xl font-black opacity-90">{vocabItems.length}</span>
+                      <p className="text-[10px] text-white/60 font-black uppercase tracking-wider">{lang === 'tr' ? 'tümü' : 'all'}</p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -1009,7 +1144,7 @@ const App: React.FC = () => {
             }
           }}
         />}
-        {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} lang={lang} onClose={async (score, total, wordResults) => {
+        {state === 'writing' && <WordWriting items={shuffleArray(getFilteredStudyWords())} lang={lang} onClose={async (score, total, wordResults) => {
           await logActivity('writing', score, total);
           if (currentUser && wordResults && wordResults.length > 0) {
             logWordResults(currentUser.id, wordResults);
@@ -1018,7 +1153,7 @@ const App: React.FC = () => {
         }} />}
         {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} onBack={() => setState('selection')} dailyGoal={getTodayGoal(currentUser?.id || '', dailyGoalValue)} lang={lang} />}
         {state === 'tutor' && <TutorView onBack={() => setState('selection')} />}
-        {state === 'games' && <GamesHub vocabItems={vocabItems} lang={lang} onBack={() => setState('selection')} />}
+        {state === 'games' && <GamesHub vocabItems={getFilteredStudyWords()} lang={lang} onBack={() => setState('selection')} />}
       </main>
 
       <footer className={`pt-1 pb-2 bg-white border-t border-slate-100 flex justify-center transition-all duration-300 ease-in-out ${headerVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
@@ -1099,6 +1234,22 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Study filter modal */}
+      <StudyFilterModal
+        isOpen={isStudyFilterModalOpen}
+        onClose={() => setIsStudyFilterModalOpen(false)}
+        vocabItems={vocabItems}
+        wordTagsMap={wordTagsMap}
+        favoriteIds={favoriteIds}
+        lang={lang}
+        userId={currentUser?.id || ''}
+        activeFilter={activeStudyFilter}
+        onApply={(filter) => {
+          setActiveStudyFilter(filter);
+          storeActiveFilter(currentUser?.id || '', filter);
+        }}
+      />
     </div>
   );
 };

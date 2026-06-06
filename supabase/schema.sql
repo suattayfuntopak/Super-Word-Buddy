@@ -145,6 +145,30 @@ CREATE POLICY "Users delete own avatar" ON storage.objects
   USING (bucket_id = 'avatars' AND name LIKE auth.uid()::text || '/%');
 
 -- ============================================================
+-- 7. USER STUDY FILTERS (for saving custom study filters)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_study_filters (
+  id             UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id        UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name           TEXT        NOT NULL,
+  word_types     TEXT[]      NOT NULL DEFAULT '{}',
+  tags           TEXT[]      NOT NULL DEFAULT '{}',
+  favorites_only BOOLEAN     NOT NULL DEFAULT FALSE,
+  search_term    TEXT        NOT NULL DEFAULT '',
+  created_at     TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, name)
+);
+
+ALTER TABLE user_study_filters ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own study filters" ON user_study_filters;
+CREATE POLICY "Users manage own study filters"
+  ON user_study_filters FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================
 -- Refresh PostgREST schema cache (run after any table/policy change)
 -- ============================================================
 NOTIFY pgrst, 'reload schema';
+

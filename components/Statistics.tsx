@@ -167,6 +167,21 @@ CREATE TABLE IF NOT EXISTS user_word_tags (
 );
 ALTER TABLE user_word_tags ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own tags" ON user_word_tags
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS user_study_filters (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  word_types TEXT[] NOT NULL DEFAULT '{}',
+  tags TEXT[] NOT NULL DEFAULT '{}',
+  favorites_only BOOLEAN NOT NULL DEFAULT FALSE,
+  search_term TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, name)
+);
+ALTER TABLE user_study_filters ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own study filters" ON user_study_filters
   FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);`;
 
 const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dailyGoal = 3, lang = 'tr' }) => {

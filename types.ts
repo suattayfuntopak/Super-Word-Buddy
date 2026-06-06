@@ -49,3 +49,17 @@ export interface TutorMaterial {
     explanation: string;
   }[];
 }
+
+export interface StudyFilterConfig {
+  wordTypes: string[];
+  tags: string[];
+  favoritesOnly: boolean;
+  searchTerm: string;
+}
+
+export interface SavedStudyFilter {
+  id?: string;
+  name: string;
+  config: StudyFilterConfig;
+}
+
