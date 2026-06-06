@@ -676,3 +676,62 @@
 1. **schema.sql yeniden çalıştır:** Avatar bucket ve `user_word_stats` tablosu için güncellenmiş `schema.sql`'i Supabase SQL Editörü'nde çalıştır.
 2. **Progress export:** İstatistikleri CSV olarak dışa aktarma butonu.
 3. **Writing word stats:** Yazma alıştırmalarında da `logWordResults` çağrısı eklenerek kelime analizi genişletilir.
+
+---
+
+---
+
+## Güncelleme — 2026-06-06 (13. Oturum — UI Temizleme, Dil Uyumu, Görsel İyileştirmeler)
+
+### 70. Statistics EN — "YOUR ACHIEVEMENT PANEL" Alt Başlığı Kaldırıldı
+- `Statistics.tsx` → `ST.en.subtitle`: `'Your Achievement Panel'` → `''` (boş string).
+- Render'daki `{t.subtitle && <p>...}` koşulu zaten boş stringi filtreleyen guard içerdiğinden ekstra değişiklik gerekmedi.
+- Türkçede zaten subtitle boştu (11. oturumda kaldırılmıştı); artık her iki dilde de alt başlık yok.
+
+### 71. Ana Sayfa Pool Desc Metni Güncellendi (TR + EN)
+- **TR:** `'Toplam X kelimelik devasa bir kaynağımız var.'` → `'Şimdilik X devasa kelime 🚀'`
+- **EN:** `'We have a massive pool of X words.'` → `'X massive words in the pool 🚀'`
+- Metin daha dinamik ve enerjik; 🚀 emoji vurgusu eklendi.
+
+### 72. Ana Sayfa başlığı "Global Kelime Havuzu" — Mobilde Tek Satır
+- `App.tsx` → selection bölümündeki `<h2>` tag'i:
+  - `text-4xl` → `text-3xl sm:text-4xl` (mobil font küçültüldü)
+  - `whitespace-nowrap` eklendi (Türkçe/İngilizce her iki başlık için tek satır garantisi).
+
+### 73. "HAVUZDA EKSİK BİR ŞEY Mİ GÖRDÜN?" İfadesi Kaldırıldı
+- `i18n.ts` → `tr.addWordPrompt`: `'Havuzda Eksik Bir Şey mi Gördün?'` → `''`
+- `i18n.ts` → `en.addWordPrompt`: `'Missing Something in the Pool?'` → `''`
+- `App.tsx` → selection bölümündeki `<p>{t.addWordPrompt}</p>` satırı kaldırıldı.
+- Manuel kelime ekle butonu üstünde artık gereksiz soru ifadesi yok.
+
+### 74. Manuel Kelime Ekle Butonu — Pastel Mor Renk + Mesafe Düzeltmesi
+- Eski: `bg-white border-slate-100 text-slate-600 hover:border-indigo-600` (sıradan beyaz).
+- Yeni: `bg-violet-50 border-violet-100 text-violet-500 hover:border-violet-400 hover:text-violet-700 hover:bg-violet-100` (uyumlu pastel mor).
+- Üst kısımdaki `pt-2` → `pt-4` olarak artırıldı; diğer grid kartlarla oran denge sağlandı.
+- Üstündeki `<p>addWordPrompt</p>` kaldırıldığından alan hem temiz hem de düzgün hizalı.
+
+### 75. Footer — Sadece Düz Yazı (Dikdörtgen Yok)
+- Footer zaten `<p>` içinde düz metin olarak duruyor; herhangi bir dikdörtgen kutu/kart yoktu, bu durum teyit edildi ve korundu.
+- Görünüm: `DESIGNED BY SUAT TAYFUN TOPAK` — sade, küçük harfli, izleme genişliğiyle.
+
+---
+
+## Güncellenen Dosyalar (13. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `components/Statistics.tsx` | GÜNCELLENDİ — EN subtitle `'Your Achievement Panel'` kaldırıldı |
+| `utils/i18n.ts` | GÜNCELLENDİ — TR/EN `poolDesc` güncellendi, TR/EN `addWordPrompt` boşaltıldı |
+| `App.tsx` | GÜNCELLENDİ — homeTitle whitespace-nowrap + küçük mobil font, addWordPrompt `<p>` kaldırıldı, Manuel Kelime Ekle pastel mor + pt-4 |
+
+---
+
+## Önerilen Sonraki Adımlar (Güncel)
+
+1. **schema.sql yeniden çalıştır:** Avatar bucket ve `user_word_stats` tablosu için güncellenmiş `schema.sql`'i Supabase SQL Editörü'nde çalıştır.
+2. **Progress export:** İstatistikleri CSV olarak dışa aktarma butonu ekle — kullanıcılar kelime listesini ve performans verilerini kaydedebilsin.
+3. **Writing word stats:** Yazma alıştırmalarında da `logWordResults` çağrısı eklenerek kelime analizi genişletilsin.
+4. **Çoklu ses tonu seçeneği:** Quiz ve Flashcards'ta UK/US arasında global tercih (şu an sadece US varsayılan).
+5. **Toplu etiket işlemleri:** Kelime listesinde çoklu seçim → toplu etiket ekle/kaldır.
+6. **Bildirim zamanlaması:** Kullanıcı belirli bir saatte "Çalışma zamanı!" bildirimi alabilsin (cron-style).
+

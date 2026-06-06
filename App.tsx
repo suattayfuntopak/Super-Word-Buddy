@@ -649,8 +649,8 @@ const App: React.FC = () => {
         {state === 'selection' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-500">
             <div className="text-center space-y-2">
-              <h2 className="text-4xl font-black text-slate-900 tracking-tight italic">{t.homeTitle}</h2>
-              <p className="text-slate-400 text-lg font-medium">{t.poolDesc(totalPoolCount)}</p>
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight italic whitespace-nowrap">{t.homeTitle}</h2>
+              <p className="text-slate-400 text-base sm:text-lg font-medium">{t.poolDesc(totalPoolCount)}</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -704,9 +704,8 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-col items-center pt-2 border-t border-slate-100">
-              <p className="text-slate-400 text-sm mb-2 font-bold uppercase tracking-widest">{t.addWordPrompt}</p>
-              <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-white border-2 border-slate-100 px-10 py-3 rounded-2xl font-black text-slate-600 hover:border-indigo-600 hover:text-indigo-600 transition-all shadow-sm">
+            <div className="flex flex-col items-center pt-4 border-t border-slate-100">
+              <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-violet-50 border-2 border-violet-100 px-10 py-3 rounded-2xl font-black text-violet-500 hover:border-violet-400 hover:text-violet-700 hover:bg-violet-100 transition-all shadow-sm">
                 {t.addWordBtn}
               </button>
             </div>

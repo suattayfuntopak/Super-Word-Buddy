@@ -76,7 +76,7 @@ const ST = {
   },
   en: {
     title: 'Statistics 📊',
-    subtitle: 'Your Achievement Panel',
+    subtitle: '',
     back: '← Go Back',
     globalPool: 'Global Pool Status',
     totalWords: 'Total Words',
