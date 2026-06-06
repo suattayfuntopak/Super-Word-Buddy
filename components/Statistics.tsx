@@ -29,9 +29,9 @@ interface DbWordStat {
 const ST = {
   tr: {
     title: 'İstatistikler 📊',
-    subtitle: 'Senin Başarı Panelin',
+    subtitle: '',
     back: '← Geri Dön',
-    globalPool: 'Global Havuz Durumu',
+    globalPool: 'Global Kelime Havuzu',
     totalWords: 'Toplam Kelime',
     myContrib: 'Senin Katkın',
     streak: 'Günlük Seri',
@@ -45,22 +45,22 @@ const ST = {
     totalActivity: 'Toplam Aktivite',
     allTime: 'Tüm zamanlar',
     overallSuccess: 'Genel Başarı',
-    quizWriting: 'Quiz + Yazma',
+    quizWriting: 'Sınav & Yazma',
     dailyGoalTitle: 'Günlük Hedef',
     dailyGoalSub: 'Bugünkü ilerleme',
     goalReached: '🏆 Hedefe ulaştın!',
     activitiesLeft: (n: number) => `${n} aktivite kaldı`,
     restDay: '💤 Bugün dinlenme günü',
-    flashcards: 'Flashcard Görüntüleme',
+    flashcards: 'Kelime Kartı Çalışması',
     flashcardsUnit: 'kart',
-    quizRate: 'Test Başarı Oranı',
+    quizRate: 'Sınav Başarı Oranı',
     writingRate: 'Yazma Doğruluğu',
     trendTitle: '7 Günlük Aktivite',
     today: 'Bugün',
     noActivity: 'Aktivite yok',
     hardWords: 'En Zor Kelimeler',
-    hardWordsSub: 'Spaced repetition — hata sayısına göre sıralı',
-    hardWordsNone: 'Henüz zorluk verisi yok — quiz ve yazma alıştırmaları yapınca burada görünür.',
+    hardWordsSub: 'Aralıklı tekrar — hata puanına göre sıralı',
+    hardWordsNone: 'Henüz zorluk puanı yok — sınav ve yazma egzersizleri yaptıkça burada görünür.',
     difficulty: 'Zorluk',
     tableError: 'Aktivite verileri yüklenemedi.',
     tableErrorSql: 'Supabase SQL Editörü\'nde aşağıdaki SQL\'i çalıştırın:',
@@ -319,7 +319,7 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
       <div className="flex justify-between items-center">
         <div className="space-y-1">
           <h2 className="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight">{t.title}</h2>
-          <p className="text-slate-400 font-bold text-xs sm:text-lg uppercase tracking-[0.2em] sm:tracking-[0.3em]">{t.subtitle}</p>
+          {t.subtitle && <p className="text-slate-400 font-bold text-xs sm:text-lg uppercase tracking-[0.2em] sm:tracking-[0.3em]">{t.subtitle}</p>}
         </div>
         <button onClick={onBack} className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm">
           {t.back}

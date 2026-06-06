@@ -37,23 +37,28 @@ export const loadFavoritesFromDB = async (userId: string): Promise<Set<string>> 
     const dbIds = new Set<string>((data || []).map((r: any) => r.word_id as string));
     const localIds = getFavoriteIds(userId);
 
-    // DB has data → use as source of truth, sync to local
-    if (dbIds.size > 0) {
-      localStorage.setItem(storageKey(userId), JSON.stringify([...dbIds]));
-      return dbIds;
+    // Merge DB + local — neither source wins outright, union of both is source of truth
+    const merged = new Set<string>([...dbIds, ...localIds]);
+
+    if (merged.size > 0) {
+      // Persist merged set to localStorage
+      localStorage.setItem(storageKey(userId), JSON.stringify([...merged]));
+
+      // Push any local-only items to DB (recovery sync for items added offline or before DB was set up)
+      const extras = [...localIds].filter(id => !dbIds.has(id));
+      if (extras.length > 0) {
+        supabase
+          .from('user_favorites')
+          .upsert(
+            extras.map(wordId => ({ user_id: userId, word_id: wordId })),
+            { onConflict: 'user_id,word_id', ignoreDuplicates: true }
+          )
+          .then(({ error: syncErr }) => { if (syncErr) console.error('Favorite recovery sync failed:', syncErr); });
+      }
+
+      return merged;
     }
 
-    // DB empty but local has favorites → push local to DB (handles schema-cache-stale scenario)
-    if (localIds.size > 0) {
-      const inserts = [...localIds].map(wordId => ({ user_id: userId, word_id: wordId }));
-      supabase
-        .from('user_favorites')
-        .upsert(inserts, { onConflict: 'user_id,word_id', ignoreDuplicates: true })
-        .then(({ error: syncErr }) => { if (syncErr) console.error('Favorite DB sync failed:', syncErr); });
-      return localIds;
-    }
-
-    // Both empty
     return new Set<string>();
   } catch {
     // Table missing or network error — fall back to localStorage

@@ -620,6 +620,38 @@
 
 ---
 
+---
+
+## Güncelleme — 2026-06-06 (11. Oturum — Statistics TR Düzeltmeleri + Favoriler Çapraz Cihaz Senkron Fix)
+
+### 68. Statistics TR Metin Düzeltmeleri
+- `globalPool`: 'Global Havuz Durumu' → **'Global Kelime Havuzu'**
+- `subtitle`: 'Senin Başarı Panelin' → **kaldırıldı** (render'da `{t.subtitle && ...}` ile koşullu)
+- `quizWriting`: 'Quiz + Yazma' → **'Sınav & Yazma'**
+- `flashcards`: 'Flashcard Görüntüleme' → **'Kelime Kartı Çalışması'**
+- `quizRate`: 'Test Başarı Oranı' → **'Sınav Başarı Oranı'**
+- `hardWordsSub`: 'Spaced repetition — hata sayısına göre sıralı' → **'Aralıklı tekrar — hata puanına göre sıralı'**
+- `hardWordsNone`: '...quiz ve yazma alıştırmaları...' → **'...sınav ve yazma egzersizleri...'**
+
+### 69. Favoriler Çapraz Cihaz Senkron Hatası Düzeltildi (Kritik)
+- **Sorun:** Mobilde 16 favori, masaüstünde 3 görünüyordu. DB'de 3 kayıt varken `loadFavoritesFromDB` DB'yi kayıtsız şartsız kaynak olarak alıyor, local 16'yı 3 ile eziyordu.
+- **Root cause:** `if (dbIds.size > 0) → localStorage = dbIds` — local fazlalıklar kayboluyordu.
+- **Fix:** DB + local **merge (union)** mantığına geçildi:
+  - `merged = union(dbIds, localIds)` — iki tarafın tamamı korunuyor.
+  - DB'de olmayan local kayıtlar (extras) `upsert ignoreDuplicates` ile DB'ye push ediliyor.
+  - Sonuç: bir cihazda 16 favori eklenirse, diğer cihazlar da 16 görür; hiçbir kayıt kaybolmaz.
+
+---
+
+## Güncellenen Dosyalar (11. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `components/Statistics.tsx` | GÜNCELLENDİ — TR metin düzeltmeleri, subtitle kaldırıldı |
+| `utils/favorites.ts` | GÜNCELLENDİ — DB+local merge, recovery push ile çapraz cihaz senkron |
+
+---
+
 ## Önerilen Sonraki Adımlar
 
 1. **schema.sql yeniden çalıştır:** Avatar bucket ve `user_word_stats` tablosu için güncellenmiş `schema.sql`'i Supabase SQL Editörü'nde çalıştır.
