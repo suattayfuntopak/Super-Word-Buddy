@@ -12,8 +12,8 @@ const TutorView: React.FC<TutorViewProps> = ({ onBack }) => {
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl">🤖</div>
           <div className="flex flex-col">
-            <h2 className="text-xl sm:text-3xl font-black text-slate-800 tracking-tight leading-none">Auto Word Trainer</h2>
-            <span className="text-[10px] sm:text-xs font-black text-indigo-500 uppercase tracking-widest mt-1">Sana Özel Otomatik Eğitmen</span>
+            <h2 className="text-xl sm:text-3xl font-black text-slate-800 tracking-tight leading-none">Kelime Antrenörü</h2>
+            <span className="text-[10px] sm:text-xs font-black text-indigo-500 uppercase tracking-widest mt-1">Sana Özel Kelime Antrenörü</span>
           </div>
         </div>
         <button
@@ -58,7 +58,7 @@ const TutorView: React.FC<TutorViewProps> = ({ onBack }) => {
       </div>
 
       <div className="text-center">
-        <p className="text-slate-400 text-[10px] sm:text-xs font-bold italic">
+        <p className="text-slate-400 text-xs sm:text-sm font-bold italic">
           Not: Bot yardımıyla akademik kelimeleri mobil cihazından zahmetsizce öğrenebilirsin. 🚀
         </p>
       </div>

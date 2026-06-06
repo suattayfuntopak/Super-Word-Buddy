@@ -114,6 +114,13 @@
 
         /* UserMenu dropdown dark */
         html.dark .bg-gradient-to-br.from-indigo-50 { background: linear-gradient(135deg, rgba(79,70,229,0.2), rgba(168,85,247,0.15)) !important; }
+
+        /* Breathe animation for coffee button */
+        @keyframes breathe {
+          0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(255,221,0,0.3); }
+          50% { transform: scale(1.04); box-shadow: 0 6px 20px rgba(255,221,0,0.55); }
+        }
+        .animate-breathe { animation: breathe 2.5s ease-in-out infinite; }
     </style>
 <script type="importmap">
 {

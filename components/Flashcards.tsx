@@ -65,7 +65,7 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete 
   // Auto-pronounce on new card
   useEffect(() => {
     if (autoPronounce && current?.word) {
-      speak(current.word, 'en-GB');
+      speak(current.word, 'en-US');
     }
   }, [currentIndex, autoPronounce]);
 

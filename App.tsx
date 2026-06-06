@@ -129,8 +129,13 @@ const App: React.FC = () => {
       const currentY = window.scrollY;
       const diff = currentY - lastScrollYRef.current;
       if (Math.abs(diff) < 5) return;
-      if (diff > 0 && currentY > 80) setHeaderVisible(false);
-      else if (diff < 0) setHeaderVisible(true);
+      if (currentY <= 10) {
+        setHeaderVisible(true);
+      } else if (diff > 0 && currentY > 80) {
+        setHeaderVisible(false);
+      } else if (diff < 0) {
+        setHeaderVisible(true);
+      }
       lastScrollYRef.current = currentY;
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -872,21 +877,9 @@ const App: React.FC = () => {
         {state === 'games' && <GamesHub vocabItems={vocabItems} lang={lang} onBack={() => setState('selection')} />}
       </main>
 
-      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${headerVisible ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'}`}>
-      <footer className="pt-0 pb-2 bg-white border-t border-slate-100 flex flex-col items-center space-y-1">
-        <div className="flex items-center justify-center space-x-4 px-6 text-center">
-          <p className="text-indigo-600 font-bold italic text-sm sm:text-base">{t.coffeeText}</p>
-          <a href="https://buymeacoffee.com/suattayfuntopak" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 bg-[#FFDD00] text-black px-4 py-2 rounded-xl font-bold hover:scale-105 transition-all shadow-lg hover:shadow-yellow-100">
-            <span className="text-xl">☕</span>
-            <span className="font-black text-sm" style={{ fontFamily: "'Cookie', cursive" }}>Buy me a coffee</span>
-          </a>
-        </div>
-        <div className="border-t border-slate-50 w-full pt-1 flex justify-center">
-          <p className="text-[10px] sm:text-xs text-slate-300 font-black uppercase tracking-[0.2em]">{t.designedBy} <span className="text-slate-400">SUAT TAYFUN TOPAK</span></p>
-        </div>
+      <footer className={`pt-1 pb-2 bg-white border-t border-slate-100 flex justify-center transition-all duration-300 ease-in-out ${headerVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <p className="text-[9px] sm:text-[10px] text-slate-300 font-black uppercase tracking-[0.2em]">{t.designedBy} <span className="text-slate-400">SUAT TAYFUN TOPAK</span></p>
       </footer>
-
-      </div>
       <CookieConsent />
       {isModalOpen && <AddWordModal onAdd={addOrUpdateWord} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} initialData={editingItem} />}
 

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Theme } from '../utils/theme';
 import { Lang } from '../utils/i18n';
 import { requestNotificationPermission } from '../utils/dailyGoal';
+import { supabase } from '../services/supabaseClient';
 
 interface UserMenuProps {
   userName: string;
@@ -20,6 +21,10 @@ const UserMenu: React.FC<UserMenuProps> = ({
   onThemeChange, onLangChange, onDailyGoalChange, onLogout,
 }) => {
   const [open, setOpen] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [accountMsg, setAccountMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const isTr = lang === 'tr';
 
@@ -40,6 +45,34 @@ const UserMenu: React.FC<UserMenuProps> = ({
   const handleGoalChange = async (n: number) => {
     if (n > 0) await requestNotificationPermission();
     onDailyGoalChange(n);
+  };
+
+  const handleEmailChange = async () => {
+    const trimmed = newEmail.trim();
+    if (!trimmed) return;
+    setAccountMsg(null);
+    const { error } = await supabase.auth.updateUser({ email: trimmed });
+    if (error) {
+      setAccountMsg({ text: (isTr ? 'Hata: ' : 'Error: ') + error.message, ok: false });
+    } else {
+      setAccountMsg({ text: isTr ? 'Onay e-postası gönderildi!' : 'Confirmation email sent!', ok: true });
+      setNewEmail('');
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (newPassword.length < 6) {
+      setAccountMsg({ text: isTr ? 'Şifre en az 6 karakter olmalı.' : 'Password must be at least 6 characters.', ok: false });
+      return;
+    }
+    setAccountMsg(null);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setAccountMsg({ text: (isTr ? 'Hata: ' : 'Error: ') + error.message, ok: false });
+    } else {
+      setAccountMsg({ text: isTr ? 'Şifre güncellendi!' : 'Password updated!', ok: true });
+      setNewPassword('');
+    }
   };
 
   const avatarLetter = userName.charAt(0).toUpperCase();
@@ -70,7 +103,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
             </div>
           </div>
 
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
             {/* Theme */}
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
@@ -135,7 +168,79 @@ const UserMenu: React.FC<UserMenuProps> = ({
               </div>
             </div>
 
+            {/* Account settings */}
             <div className="border-t border-slate-100 pt-3">
+              <button
+                onClick={() => { setShowAccount(v => !v); setAccountMsg(null); }}
+                className="w-full flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors py-1"
+              >
+                <span>{isTr ? '🔑 Hesap Ayarları' : '🔑 Account Settings'}</span>
+                <span className="text-slate-300">{showAccount ? '▲' : '▼'}</span>
+              </button>
+
+              {showAccount && (
+                <div className="mt-3 space-y-3">
+                  {/* Email change */}
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
+                      {isTr ? 'E-posta Değiştir' : 'Change Email'}
+                    </label>
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={e => setNewEmail(e.target.value)}
+                      placeholder={isTr ? 'Yeni e-posta adresi' : 'New email address'}
+                      className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:border-indigo-400 outline-none"
+                    />
+                    <button
+                      onClick={handleEmailChange}
+                      className="w-full mt-1.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-black text-[10px] rounded-xl transition-all uppercase tracking-wide"
+                    >
+                      {isTr ? 'E-postayı Güncelle' : 'Update Email'}
+                    </button>
+                  </div>
+
+                  {/* Password change */}
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
+                      {isTr ? 'Şifre Değiştir' : 'Change Password'}
+                    </label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder={isTr ? 'Yeni şifre (min. 6 karakter)' : 'New password (min. 6 chars)'}
+                      className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:border-indigo-400 outline-none"
+                    />
+                    <button
+                      onClick={handlePasswordChange}
+                      className="w-full mt-1.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-black text-[10px] rounded-xl transition-all uppercase tracking-wide"
+                    >
+                      {isTr ? 'Şifreyi Güncelle' : 'Update Password'}
+                    </button>
+                  </div>
+
+                  {accountMsg && (
+                    <p className={`text-[10px] text-center font-bold py-1 px-2 rounded-lg ${accountMsg.ok ? 'text-green-600 bg-green-50' : 'text-red-500 bg-red-50'}`}>
+                      {accountMsg.text}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Buy me a coffee */}
+            <div className="border-t border-slate-100 pt-3 space-y-2">
+              <a
+                href="https://buymeacoffee.com/suattayfuntopak"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center space-x-2 bg-[#FFDD00] text-black px-3 py-2.5 rounded-xl font-bold animate-breathe shadow-md"
+              >
+                <span className="text-lg">☕</span>
+                <span className="font-black text-sm" style={{ fontFamily: "'Cookie', cursive" }}>Buy me a coffee</span>
+              </a>
+
               <button
                 onClick={() => { setOpen(false); onLogout(); }}
                 className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-500 font-black text-sm rounded-xl transition-all"

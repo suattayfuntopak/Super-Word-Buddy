@@ -28,6 +28,7 @@ const T = {
     msgGreat: 'Harika gidiyorsun! 🎉',
     msgPoor: 'Biraz daha çalışalım mı? 🧸',
     poolDesc: 'Havuzdaki kelimeleri iyice kavramışsın!',
+    autoSpeak: 'Sesli',
   },
   en: {
     preparing: 'Preparing Questions...',
@@ -47,6 +48,7 @@ const T = {
     msgGreat: "You're doing great! 🎉",
     msgPoor: 'Need more practice? 🧸',
     poolDesc: "You know the words in the pool well!",
+    autoSpeak: 'Audio',
   },
 };
 
@@ -58,8 +60,11 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
   const [isAnswered, setIsAnswered] = useState(false);
   const [activeMeaningIdx, setActiveMeaningIdx] = useState<number | null>(null);
   const [wrongWords, setWrongWords] = useState<string[]>([]);
+  const [autoSpeak, setAutoSpeak] = useState(false);
 
   const t = T[lang];
+
+  const readableQuestion = (q: string) => q.replace(/_+/g, 'bla bla');
 
   const isCorrectAnswer = (optionText: string, correct: string) =>
     optionText.trim().toLowerCase() === correct.trim().toLowerCase();
@@ -86,10 +91,19 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
     }
   };
 
-  const speakQuestion = (lang: 'en-GB' | 'en-US') => {
-    const readableText = questions[currentIndex].question.replace(/_+/g, "blank");
-    speak(readableText, lang);
+  const speakQuestion = (accent: 'en-GB' | 'en-US') => {
+    speak(readableQuestion(questions[currentIndex].question), accent);
   };
+
+  // Auto-speak new question (US English)
+  useEffect(() => {
+    if (autoSpeak && !showResult && questions.length > 0) {
+      const timer = setTimeout(() => {
+        speak(readableQuestion(questions[currentIndex].question), 'en-US');
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, autoSpeak, showResult]);
 
   useEffect(() => {
     if (showResult || questions.length === 0) return;
@@ -138,27 +152,27 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
     }).filter((item): item is { word: string; meaning: string; wordTypeTr: string } => item !== null);
 
     return (
-      <div className="bg-white p-6 sm:p-16 rounded-[2.5rem] sm:rounded-[4rem] shadow-2xl text-center max-w-lg mx-auto border-4 border-indigo-50 animate-in zoom-in-95 duration-500">
-        <div className="text-5xl sm:text-7xl mb-6 sm:mb-8">{icon}</div>
-        <h2 className="text-2xl sm:text-4xl font-black text-slate-800 mb-4 tracking-tight">{message}</h2>
-        <p className="text-slate-400 text-base sm:text-xl font-medium mb-8 sm:mb-10">{t.poolDesc}</p>
-        <div className="bg-indigo-50 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] mb-6 sm:mb-8">
-          <span className="text-5xl sm:text-7xl font-black text-indigo-500">%{percentage}</span>
-          <p className="text-indigo-400 font-bold mt-2 uppercase tracking-widest text-sm sm:text-base">{t.successRate}</p>
+      <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-2xl text-center max-w-lg mx-auto border-4 border-indigo-50 animate-in zoom-in-95 duration-500">
+        <div className="text-4xl sm:text-6xl mb-4">{icon}</div>
+        <h2 className="text-xl sm:text-3xl font-black text-slate-800 mb-3 tracking-tight">{message}</h2>
+        <p className="text-slate-400 text-sm sm:text-base font-medium mb-5">{t.poolDesc}</p>
+        <div className="bg-indigo-50 p-4 sm:p-8 rounded-2xl mb-5">
+          <span className="text-4xl sm:text-6xl font-black text-indigo-500">%{percentage}</span>
+          <p className="text-indigo-400 font-bold mt-1 uppercase tracking-widest text-xs">{t.successRate}</p>
         </div>
 
         {wrongWordDetails.length > 0 && (
-          <div className="mb-6 sm:mb-8 text-left">
-            <p className="text-[10px] sm:text-xs font-black text-slate-300 uppercase tracking-widest mb-3">
+          <div className="mb-5 text-left">
+            <p className="text-[10px] sm:text-xs font-black text-slate-300 uppercase tracking-widest mb-2">
               {t.reviewTitle} ({wrongWordDetails.length})
             </p>
             <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
               {wrongWordDetails.map((item, i) => (
-                <div key={i} className="flex items-center justify-between bg-red-50 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-red-100">
+                <div key={i} className="flex items-center justify-between bg-red-50 px-3 py-2 rounded-xl border border-red-100">
                   <div className="flex-1 min-w-0 mr-2">
-                    <span className="font-black text-slate-800 text-sm sm:text-base">{item.word}</span>
+                    <span className="font-black text-slate-800 text-sm">{item.word}</span>
                     {item.wordTypeTr && <span className="ml-1 text-[10px] text-slate-400 italic">({item.wordTypeTr})</span>}
-                    <span className="ml-2 text-xs sm:text-sm text-indigo-600 font-bold truncate">{item.meaning}</span>
+                    <span className="ml-2 text-xs text-indigo-600 font-bold truncate">{item.meaning}</span>
                   </div>
                   <div className="flex space-x-1 shrink-0">
                     <button onClick={() => speak(item.word, 'en-GB')} className="w-6 h-6 rounded-md overflow-hidden border border-slate-200" title="Listen UK">
@@ -174,7 +188,7 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
           </div>
         )}
 
-        <button onClick={() => onClose(score, questions.length, wrongWords)} className="w-full py-4 sm:py-6 bg-indigo-600 text-white rounded-2xl sm:rounded-[2rem] font-black text-lg sm:text-xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100">
+        <button onClick={() => onClose(score, questions.length, wrongWords)} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-base hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100">
           {t.back}
         </button>
       </div>
@@ -185,42 +199,54 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
   const labels = ['A', 'B', 'C', 'D', 'E'];
 
   return (
-    <div className={`w-full max-w-3xl mx-auto space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 relative ${isAnswered ? 'pb-28' : ''}`} onClick={() => setActiveMeaningIdx(null)}>
-      <div className="flex justify-between items-center mb-4 px-4 sm:px-6">
-        <span className="text-sm sm:text-lg font-black text-slate-300 uppercase tracking-widest">{t.question} {currentIndex + 1} / {questions.length}</span>
-        <div className="flex items-center space-x-2 bg-yellow-50 px-3 sm:px-5 py-1.5 sm:py-2 rounded-full">
-          <span className="text-base sm:text-lg">💎</span>
-          <span className="text-sm sm:text-yellow-600 font-black">{t.score}: {score * 10}</span>
+    <div className={`w-full max-w-3xl mx-auto space-y-3 sm:space-y-5 animate-in fade-in slide-in-from-bottom-8 relative ${isAnswered ? 'pb-24' : ''}`} onClick={() => setActiveMeaningIdx(null)}>
+      {/* Header: question counter + auto-speak + score */}
+      <div className="flex justify-between items-center px-2 sm:px-4">
+        <span className="text-xs sm:text-base font-black text-slate-300 uppercase tracking-widest">{t.question} {currentIndex + 1} / {questions.length}</span>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setAutoSpeak(v => !v)}
+            className={`flex items-center space-x-1 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black transition-all border ${autoSpeak ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-400 hover:border-indigo-300'}`}
+            title={t.autoSpeak}
+          >
+            <span>🔊</span>
+            <span className="hidden sm:inline">{t.autoSpeak}</span>
+          </button>
+          <div className="flex items-center space-x-1.5 bg-yellow-50 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full">
+            <span className="text-sm sm:text-base">💎</span>
+            <span className="text-xs sm:text-sm text-yellow-600 font-black">{t.score}: {score * 10}</span>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white p-6 sm:p-10 md:p-14 rounded-[2.5rem] sm:rounded-[4rem] shadow-2xl border-4 border-white" onClick={(e) => e.stopPropagation()}>
-        <div className="text-center mb-6 sm:mb-8">
-          <h3 className="text-xl sm:text-2xl md:text-4xl font-black text-slate-800 mb-4 sm:mb-6 leading-tight break-words">
+      {/* Question card */}
+      <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-2xl border-4 border-white" onClick={(e) => e.stopPropagation()}>
+        <div className="text-center mb-4 sm:mb-6">
+          <h3 className="text-base sm:text-xl md:text-2xl font-black text-slate-800 mb-3 sm:mb-4 leading-tight break-words">
             {current.question}
           </h3>
 
-          <div className="flex justify-center space-x-3 sm:space-x-4">
+          <div className="flex justify-center space-x-2 sm:space-x-4">
             <button
               onClick={() => speakQuestion('en-GB')}
-              className="flex items-center space-x-2 bg-blue-50 hover:bg-blue-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all border border-blue-100"
+              className="flex items-center space-x-1.5 bg-blue-50 hover:bg-blue-100 px-2 sm:px-4 py-1.5 rounded-lg sm:rounded-xl transition-all border border-blue-100"
             >
-              <img src="https://flagcdn.com/w40/gb.png" className="w-5 sm:w-6 h-auto rounded-sm" alt="UK" />
-              <span className="text-[10px] sm:text-xs font-black text-blue-600 uppercase tracking-tighter">{t.listenUK}</span>
+              <img src="https://flagcdn.com/w40/gb.png" className="w-4 sm:w-5 h-auto rounded-sm" alt="UK" />
+              <span className="text-[9px] sm:text-xs font-black text-blue-600 uppercase tracking-tighter">{t.listenUK}</span>
             </button>
             <button
               onClick={() => speakQuestion('en-US')}
-              className="flex items-center space-x-2 bg-red-50 hover:bg-red-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all border border-red-100"
+              className="flex items-center space-x-1.5 bg-red-50 hover:bg-red-100 px-2 sm:px-4 py-1.5 rounded-lg sm:rounded-xl transition-all border border-red-100"
             >
-              <img src="https://flagcdn.com/w40/us.png" className="w-5 sm:w-6 h-auto rounded-sm" alt="US" />
-              <span className="text-[10px] sm:text-xs font-black text-red-600 uppercase tracking-tighter">{t.listenUS}</span>
+              <img src="https://flagcdn.com/w40/us.png" className="w-4 sm:w-5 h-auto rounded-sm" alt="US" />
+              <span className="text-[9px] sm:text-xs font-black text-red-600 uppercase tracking-tighter">{t.listenUS}</span>
             </button>
           </div>
 
-          <p className="mt-3 text-[10px] sm:text-xs text-slate-300 font-bold uppercase tracking-widest">{t.kbHint}</p>
+          <p className="mt-2 text-[9px] sm:text-xs text-slate-300 font-bold uppercase tracking-widest">{t.kbHint}</p>
         </div>
 
-        <div className="grid gap-3 sm:gap-4">
+        <div className="grid gap-2 sm:gap-3">
           {current.options.map((option, idx) => {
             const isCorrect = isCorrectAnswer(option.text, current.correctAnswer);
             const isSelected = option.text === selectedOption;
@@ -237,51 +263,51 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
                 <button
                   disabled={isAnswered}
                   onClick={() => handleAnswer(option)}
-                  className={`w-full text-left p-4 sm:p-5 border-2 sm:border-4 rounded-[1.5rem] sm:rounded-[2rem] text-base sm:text-lg font-bold transition-all flex items-center space-x-3 sm:space-x-4 ${!isAnswered ? 'hover:scale-[1.01] active:scale-95 shadow-sm' : ''} ${bgColor}`}
+                  className={`w-full text-left p-3 sm:p-4 border-2 rounded-2xl text-sm sm:text-base font-bold transition-all flex items-center space-x-3 ${!isAnswered ? 'hover:scale-[1.01] active:scale-95 shadow-sm' : ''} ${bgColor}`}
                 >
-                  <span className={`w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-lg sm:rounded-xl flex items-center justify-center text-xs sm:text-base font-black transition-colors ${isAnswered && isCorrect ? 'bg-green-500 text-white' : isAnswered && isSelected && !isCorrect ? 'bg-red-500 text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
+                  <span className={`w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-lg flex items-center justify-center text-xs sm:text-sm font-black transition-colors ${isAnswered && isCorrect ? 'bg-green-500 text-white' : isAnswered && isSelected && !isCorrect ? 'bg-red-500 text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
                     {labels[idx]}
                   </span>
-                  <div className="flex-1 pr-16 sm:pr-32 break-words leading-tight flex flex-col">
-                    <span className="text-sm sm:text-lg">{option.text}</span>
+                  <div className="flex-1 pr-10 sm:pr-20 break-words leading-tight">
+                    <span className="text-sm sm:text-base">{option.text}</span>
                   </div>
-                  {isAnswered && isCorrect && <span className="text-xl sm:text-2xl animate-bounce">✓</span>}
-                  {isAnswered && isSelected && !isCorrect && <span className="text-xl sm:text-2xl">✕</span>}
+                  {isAnswered && isCorrect && <span className="text-lg animate-bounce">✓</span>}
+                  {isAnswered && isSelected && !isCorrect && <span className="text-lg">✕</span>}
                 </button>
 
-                <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center space-x-1.5">
                   {!isAnswered && (
                     <div className="relative">
                       <button
                         onClick={(e) => { e.stopPropagation(); setActiveMeaningIdx(activeMeaningIdx === idx ? null : idx); }}
-                        className="px-2 py-1.5 sm:px-3 sm:py-2 bg-indigo-50 text-indigo-400 border border-indigo-100 rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-tighter hover:bg-indigo-100 transition-all"
+                        className="px-1.5 py-1 sm:px-2 sm:py-1.5 bg-indigo-50 text-indigo-400 border border-indigo-100 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-tighter hover:bg-indigo-100 transition-all"
                       >
                         {t.meaning}
                       </button>
 
                       {activeMeaningIdx === idx && (
-                        <div className="absolute right-0 bottom-full mb-4 z-[110] animate-in zoom-in-90 duration-300 origin-bottom-right">
-                          <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl border-4 border-indigo-50 w-48 sm:w-56 text-center relative shadow-indigo-200/50">
-                            <p className="text-lg sm:text-xl font-black text-slate-800 leading-tight mb-1">{option.meaning}</p>
+                        <div className="absolute right-0 bottom-full mb-3 z-[110] animate-in zoom-in-90 duration-300 origin-bottom-right">
+                          <div className="bg-white p-3 sm:p-5 rounded-2xl shadow-2xl border-4 border-indigo-50 w-44 sm:w-52 text-center relative shadow-indigo-200/50">
+                            <p className="text-sm sm:text-lg font-black text-slate-800 leading-tight mb-1">{option.meaning}</p>
                             {option.wordTypeTr && <span className="text-[8px] sm:text-[10px] font-black text-slate-300 italic">({option.wordTypeTr})</span>}
                             <button
                               onClick={(e) => { e.stopPropagation(); setActiveMeaningIdx(null); }}
-                              className="mt-3 sm:mt-4 w-full py-1.5 sm:py-2 bg-slate-50 hover:bg-slate-100 text-slate-400 text-[8px] sm:text-[10px] font-black uppercase rounded-lg sm:rounded-xl transition-colors border border-slate-100"
+                              className="mt-2 w-full py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-400 text-[8px] sm:text-[10px] font-black uppercase rounded-lg transition-colors border border-slate-100"
                             >
                               {t.close}
                             </button>
-                            <div className="absolute -bottom-3 right-6 sm:right-8 w-5 h-5 sm:w-6 sm:h-6 bg-white border-b-4 border-r-4 border-indigo-50 rotate-45"></div>
+                            <div className="absolute -bottom-3 right-5 sm:right-6 w-4 h-4 sm:w-5 sm:h-5 bg-white border-b-4 border-r-4 border-indigo-50 rotate-45"></div>
                           </div>
                         </div>
                       )}
                     </div>
                   )}
 
-                  <div className="flex flex-col space-y-1">
-                    <button onClick={(e) => { e.stopPropagation(); speak(option.text, 'en-GB'); }} className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:scale-110 transition-transform" title="Listen UK">
+                  <div className="flex flex-col space-y-0.5">
+                    <button onClick={(e) => { e.stopPropagation(); speak(option.text, 'en-GB'); }} className="w-5 h-5 sm:w-7 sm:h-7 rounded-md overflow-hidden border border-slate-200 shadow-sm hover:scale-110 transition-transform" title="Listen UK">
                       <img src="https://flagcdn.com/w40/gb.png" className="w-full h-full object-cover" alt="UK" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); speak(option.text, 'en-US'); }} className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:scale-110 transition-transform" title="Listen US">
+                    <button onClick={(e) => { e.stopPropagation(); speak(option.text, 'en-US'); }} className="w-5 h-5 sm:w-7 sm:h-7 rounded-md overflow-hidden border border-slate-200 shadow-sm hover:scale-110 transition-transform" title="Listen US">
                       <img src="https://flagcdn.com/w40/us.png" className="w-full h-full object-cover" alt="US" />
                     </button>
                   </div>
@@ -293,11 +319,11 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
       </div>
 
       {isAnswered && (
-        <div className="fixed bottom-0 inset-x-0 z-50 p-4 bg-white/90 backdrop-blur-sm border-t border-slate-100">
+        <div className="fixed bottom-0 inset-x-0 z-50 p-3 sm:p-4 bg-white/90 backdrop-blur-sm border-t border-slate-100">
           <div className="max-w-3xl mx-auto">
             <button
               onClick={nextQuestion}
-              className="w-full py-4 sm:py-6 bg-orange-400 text-white rounded-[1.5rem] sm:rounded-[2.5rem] font-black text-xl sm:text-2xl hover:bg-orange-500 transition-all transform hover:scale-[1.02] shadow-2xl shadow-orange-100 animate-in slide-in-from-bottom-4"
+              className="w-full py-3 sm:py-5 bg-orange-400 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-orange-500 transition-all transform hover:scale-[1.02] shadow-2xl shadow-orange-100 animate-in slide-in-from-bottom-4"
             >
               {t.next(currentIndex === questions.length - 1)}
             </button>

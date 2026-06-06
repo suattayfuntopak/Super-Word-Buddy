@@ -327,9 +327,9 @@ const MatchGame: React.FC<{ vocabItems: VocabularyItem[]; lang: 'tr' | 'en'; onB
           <div
             key={card.id}
             onClick={() => handleCardClick(i)}
-            className={`h-20 sm:h-32 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center p-2 sm:p-3 text-center text-[10px] sm:text-sm font-black cursor-pointer transition-all border-2 sm:border-4 ${
+            className={`h-20 sm:h-32 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center p-2 sm:p-3 text-center text-xs sm:text-base font-black cursor-pointer transition-all border-2 sm:border-4 ${
               card.isMatched ? 'opacity-0 scale-90 pointer-events-none' :
-              card.isFlipped ? 'bg-indigo-50 border-indigo-200 text-indigo-600 shadow-inner' : 'bg-white border-slate-100 text-transparent shadow-xl hover:border-indigo-100'
+              card.isFlipped ? 'bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-white shadow-inner' : 'bg-white dark:bg-slate-700 border-slate-100 dark:border-slate-600 text-transparent shadow-xl hover:border-indigo-100 dark:hover:border-indigo-500'
             }`}
           >
             {card.isFlipped ? card.text : ''}

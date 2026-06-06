@@ -175,7 +175,11 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
         .order('created_at', { ascending: false });
 
       if (logError) {
-        const isMissing = logError.code === '42P01' || logError.message?.includes('does not exist');
+        const isMissing =
+          logError.code === '42P01' ||
+          logError.message?.includes('does not exist') ||
+          logError.message?.includes('schema cache') ||
+          logError.message?.toLowerCase().includes('could not find');
         setFetchError({
           type: isMissing ? 'table_missing' : 'unknown',
           message: logError.message
@@ -306,7 +310,13 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
                 </div>
               </div>
               <p className="text-amber-700 text-xs sm:text-sm font-bold">{t.tableErrorSql}</p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={fetchData}
+                  className="px-4 py-2 bg-green-600 text-white rounded-xl font-black text-xs hover:bg-green-700 transition-colors"
+                >
+                  🔄 {lang === 'tr' ? 'Tekrar Dene' : 'Retry'}
+                </button>
                 <button
                   onClick={() => setShowSql(v => !v)}
                   className="px-4 py-2 bg-amber-600 text-white rounded-xl font-black text-xs hover:bg-amber-700 transition-colors"
