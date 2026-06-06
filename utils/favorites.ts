@@ -33,10 +33,30 @@ export const loadFavoritesFromDB = async (userId: string): Promise<Set<string>> 
       .select('word_id')
       .eq('user_id', userId);
     if (error) throw error;
-    const ids = new Set<string>((data || []).map((r: any) => r.word_id as string));
-    localStorage.setItem(storageKey(userId), JSON.stringify([...ids]));
-    return ids;
+
+    const dbIds = new Set<string>((data || []).map((r: any) => r.word_id as string));
+    const localIds = getFavoriteIds(userId);
+
+    // DB has data → use as source of truth, sync to local
+    if (dbIds.size > 0) {
+      localStorage.setItem(storageKey(userId), JSON.stringify([...dbIds]));
+      return dbIds;
+    }
+
+    // DB empty but local has favorites → push local to DB (handles schema-cache-stale scenario)
+    if (localIds.size > 0) {
+      const inserts = [...localIds].map(wordId => ({ user_id: userId, word_id: wordId }));
+      supabase
+        .from('user_favorites')
+        .upsert(inserts, { onConflict: 'user_id,word_id', ignoreDuplicates: true })
+        .then(({ error: syncErr }) => { if (syncErr) console.error('Favorite DB sync failed:', syncErr); });
+      return localIds;
+    }
+
+    // Both empty
+    return new Set<string>();
   } catch {
+    // Table missing or network error — fall back to localStorage
     return getFavoriteIds(userId);
   }
 };

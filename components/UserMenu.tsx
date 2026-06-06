@@ -7,26 +7,64 @@ import { supabase } from '../services/supabaseClient';
 interface UserMenuProps {
   userName: string;
   userEmail: string;
+  userId: string;
+  avatarUrl?: string;
   theme: Theme;
   lang: Lang;
   dailyGoal: number;
   onThemeChange: (t: Theme) => void;
   onLangChange: (l: Lang) => void;
   onDailyGoalChange: (n: number) => void;
+  onAvatarChange?: (url: string) => void;
   onLogout: () => void;
 }
 
 const UserMenu: React.FC<UserMenuProps> = ({
-  userName, userEmail, theme, lang, dailyGoal,
-  onThemeChange, onLangChange, onDailyGoalChange, onLogout,
+  userName, userEmail, userId, avatarUrl, theme, lang, dailyGoal,
+  onThemeChange, onLangChange, onDailyGoalChange, onAvatarChange, onLogout,
 }) => {
   const [open, setOpen] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [accountMsg, setAccountMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [localAvatarUrl, setLocalAvatarUrl] = useState(avatarUrl);
   const ref = useRef<HTMLDivElement>(null);
   const isTr = lang === 'tr';
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    if (!file.type.startsWith('image/')) {
+      setAccountMsg({ text: isTr ? 'Lütfen bir resim dosyası seçin.' : 'Please select an image file.', ok: false });
+      return;
+    }
+    setAvatarUploading(true);
+    setAccountMsg(null);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${userId}/avatar.${ext}`;
+      const { error: upError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+      if (upError) {
+        setAccountMsg({ text: (isTr ? 'Yükleme hatası: ' : 'Upload error: ') + upError.message, ok: false });
+        return;
+      }
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+      const publicUrl = urlData.publicUrl + `?t=${Date.now()}`;
+      const { error: updateError } = await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
+      if (updateError) {
+        setAccountMsg({ text: (isTr ? 'Profil güncelleme hatası: ' : 'Profile update error: ') + updateError.message, ok: false });
+        return;
+      }
+      setLocalAvatarUrl(publicUrl);
+      onAvatarChange?.(publicUrl);
+      setAccountMsg({ text: isTr ? 'Profil fotoğrafı güncellendi!' : 'Profile photo updated!', ok: true });
+    } finally {
+      setAvatarUploading(false);
+      e.target.value = '';
+    }
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -81,11 +119,13 @@ const UserMenu: React.FC<UserMenuProps> = ({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-indigo-600 text-white font-black text-sm sm:text-base flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-all border-2 border-white/30"
+        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-indigo-600 text-white font-black text-sm sm:text-base flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-all border-2 border-white/30 overflow-hidden"
         title={userName}
         aria-label="User menu"
       >
-        {avatarLetter}
+        {localAvatarUrl
+          ? <img src={localAvatarUrl} className="w-full h-full object-cover" alt={userName} />
+          : avatarLetter}
       </button>
 
       {open && (
@@ -93,8 +133,10 @@ const UserMenu: React.FC<UserMenuProps> = ({
           {/* User info */}
           <div className="px-5 py-4 bg-gradient-to-br from-indigo-50 to-purple-50 border-b border-slate-100">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-black text-base flex items-center justify-center shadow-md shrink-0">
-                {avatarLetter}
+              <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-black text-base flex items-center justify-center shadow-md shrink-0 overflow-hidden">
+                {localAvatarUrl
+                  ? <img src={localAvatarUrl} className="w-full h-full object-cover" alt={userName} />
+                  : avatarLetter}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-black text-slate-800 truncate text-sm">{userName}</p>
@@ -180,6 +222,18 @@ const UserMenu: React.FC<UserMenuProps> = ({
 
               {showAccount && (
                 <div className="mt-3 space-y-3">
+                  {/* Avatar upload */}
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
+                      {isTr ? 'Profil Fotoğrafı' : 'Profile Photo'}
+                    </label>
+                    <label className={`w-full flex items-center justify-center space-x-2 py-2 rounded-xl border-2 border-dashed cursor-pointer transition-all text-[10px] font-black uppercase tracking-wide ${avatarUploading ? 'border-indigo-200 text-indigo-300' : 'border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-500'}`}>
+                      <span>{avatarUploading ? '⏳' : '📷'}</span>
+                      <span>{avatarUploading ? (isTr ? 'Yükleniyor...' : 'Uploading...') : (isTr ? 'Fotoğraf Yükle' : 'Upload Photo')}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={avatarUploading} />
+                    </label>
+                  </div>
+
                   {/* Email change */}
                   <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">

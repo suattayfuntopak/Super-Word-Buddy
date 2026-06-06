@@ -58,6 +58,9 @@ const App: React.FC = () => {
   // Favorites mode modal
   const [showFavoritesModeModal, setShowFavoritesModeModal] = useState(false);
 
+  // Tag share
+  const [shareTagCopied, setShareTagCopied] = useState(false);
+
   // Header/footer visibility (hide on scroll down / activity states)
   const [headerVisible, setHeaderVisible] = useState(true);
   const lastScrollYRef = useRef(0);
@@ -86,7 +89,8 @@ const App: React.FC = () => {
         const user: User = {
           id: session.user.id,
           email: session.user.email!,
-          name: session.user.user_metadata.name || 'Öğrenci'
+          name: session.user.user_metadata.name || 'Öğrenci',
+          avatarUrl: session.user.user_metadata.avatar_url || undefined,
         };
         setCurrentUser(user);
         fetchAllWords();
@@ -100,7 +104,8 @@ const App: React.FC = () => {
         const user: User = {
           id: session.user.id,
           email: session.user.email!,
-          name: session.user.user_metadata.name || 'Öğrenci'
+          name: session.user.user_metadata.name || 'Öğrenci',
+          avatarUrl: session.user.user_metadata.avatar_url || undefined,
         };
         setCurrentUser(user);
         fetchAllWords();
@@ -473,6 +478,18 @@ const App: React.FC = () => {
     setDailyGoal(clamped);
   };
 
+  const shareTagWords = () => {
+    if (!activeTagFilter || filteredVocab.length === 0) return;
+    const header = lang === 'tr'
+      ? `📚 "${activeTagFilter}" Kelime Listesi — Super Word Buddy\n\n`
+      : `📚 "${activeTagFilter}" Word List — Super Word Buddy\n\n`;
+    const list = filteredVocab.map((w, i) => `${i + 1}. ${w.word} — ${w.meaning}`).join('\n');
+    navigator.clipboard.writeText(header + list).then(() => {
+      setShareTagCopied(true);
+      setTimeout(() => setShareTagCopied(false), 2500);
+    });
+  };
+
   const filteredVocab = (() => {
     let list = searchTerm.trim() === ''
       ? vocabItems
@@ -522,12 +539,15 @@ const App: React.FC = () => {
                 <UserMenu
                   userName={currentUser.name}
                   userEmail={currentUser.email}
+                  userId={currentUser.id}
+                  avatarUrl={currentUser.avatarUrl}
                   theme={theme}
                   lang={lang}
                   dailyGoal={dailyGoalValue}
                   onThemeChange={handleThemeChange}
                   onLangChange={handleLangChange}
                   onDailyGoalChange={handleDailyGoalChange}
+                  onAvatarChange={(url) => setCurrentUser(prev => prev ? { ...prev, avatarUrl: url } : null)}
                   onLogout={handleLogout}
                 />
               </div>
@@ -707,6 +727,14 @@ const App: React.FC = () => {
                     🏷️ {tag}
                   </button>
                 ))}
+                {activeTagFilter && (
+                  <button
+                    onClick={shareTagWords}
+                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-black transition-all border ${shareTagCopied ? 'bg-green-500 text-white border-green-500' : 'bg-white border-indigo-200 text-indigo-500 hover:bg-indigo-50 hover:border-indigo-400'}`}
+                  >
+                    {shareTagCopied ? `✓ ${lang === 'tr' ? 'Kopyalandı!' : 'Copied!'}` : `📤 ${lang === 'tr' ? 'Paylaş' : 'Share'}`}
+                  </button>
+                )}
               </div>
             )}
 
@@ -857,20 +885,41 @@ const App: React.FC = () => {
           lang={lang}
           onComplete={async (total) => { await logActivity('flashcards', total, total); setState('selection'); }}
         />}
-        {state === 'quiz' && <Quiz questions={quizQuestions} lang={lang} onClose={async (score, total, wrongWordStrings) => {
-          await logActivity('quiz', score, total);
-          if (currentUser) {
-            wrongWordStrings.forEach(wordStr => {
-              const item = vocabItems.find(v => v.word === wordStr);
-              if (item) updateWordDifficulty(currentUser.id, item.id, false);
-            });
-            quizQuestions.filter(q => !wrongWordStrings.includes(q.word)).forEach(q => {
-              const item = vocabItems.find(v => v.word === q.word);
-              if (item) updateWordDifficulty(currentUser.id, item.id, true);
-            });
-          }
-          setState('selection');
-        }} />}
+        {state === 'quiz' && <Quiz questions={quizQuestions} lang={lang}
+          onClose={async (score, total, wrongWordStrings) => {
+            await logActivity('quiz', score, total);
+            if (currentUser) {
+              wrongWordStrings.forEach(wordStr => {
+                const item = vocabItems.find(v => v.word === wordStr);
+                if (item) updateWordDifficulty(currentUser.id, item.id, false);
+              });
+              quizQuestions.filter(q => !wrongWordStrings.includes(q.word)).forEach(q => {
+                const item = vocabItems.find(v => v.word === q.word);
+                if (item) updateWordDifficulty(currentUser.id, item.id, true);
+              });
+            }
+            setState('selection');
+          }}
+          onPracticeWrong={async (score, total, wrongWordStrings) => {
+            await logActivity('quiz', score, total);
+            if (currentUser) {
+              wrongWordStrings.forEach(wordStr => {
+                const item = vocabItems.find(v => v.word === wordStr);
+                if (item) updateWordDifficulty(currentUser.id, item.id, false);
+              });
+              quizQuestions.filter(q => !wrongWordStrings.includes(q.word)).forEach(q => {
+                const item = vocabItems.find(v => v.word === q.word);
+                if (item) updateWordDifficulty(currentUser.id, item.id, true);
+              });
+            }
+            const wrongItems = vocabItems.filter(v => wrongWordStrings.includes(v.word));
+            if (wrongItems.length > 0) {
+              startFlashcards(wrongItems);
+            } else {
+              setState('selection');
+            }
+          }}
+        />}
         {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} lang={lang} onClose={async (score, total) => { await logActivity('writing', score, total); setState('selection'); }} />}
         {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} onBack={() => setState('selection')} dailyGoal={dailyGoalValue} lang={lang} />}
         {state === 'tutor' && <TutorView onBack={() => setState('selection')} />}

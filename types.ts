@@ -15,6 +15,7 @@ export interface User {
   email: string;
   password?: string;
   name: string;
+  avatarUrl?: string;
 }
 
 export type AppState = 'home' | 'login' | 'signup' | 'upload' | 'analyzing' | 'selection' | 'learning' | 'quiz' | 'list' | 'writing' | 'stats' | 'tutor' | 'games';

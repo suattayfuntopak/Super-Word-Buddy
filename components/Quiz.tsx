@@ -7,6 +7,7 @@ interface QuizProps {
   questions: QuizQuestion[];
   lang?: 'tr' | 'en';
   onClose: (score: number, total: number, wrongWordStrings: string[]) => void;
+  onPracticeWrong?: (score: number, total: number, wrongWordStrings: string[]) => void;
 }
 
 const T = {
@@ -29,6 +30,7 @@ const T = {
     msgPoor: 'Biraz daha çalışalım mı? 🧸',
     poolDesc: 'Havuzdaki kelimeleri iyice kavramışsın!',
     autoSpeak: 'Sesli',
+    practiceWrong: '🔁 Yanlışları Flashcard\'la Çalış',
   },
   en: {
     preparing: 'Preparing Questions...',
@@ -49,10 +51,11 @@ const T = {
     msgPoor: 'Need more practice? 🧸',
     poolDesc: "You know the words in the pool well!",
     autoSpeak: 'Audio',
+    practiceWrong: '🔁 Flashcard Wrong Words',
   },
 };
 
-const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
+const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose, onPracticeWrong }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
@@ -60,7 +63,7 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
   const [isAnswered, setIsAnswered] = useState(false);
   const [activeMeaningIdx, setActiveMeaningIdx] = useState<number | null>(null);
   const [wrongWords, setWrongWords] = useState<string[]>([]);
-  const [autoSpeak, setAutoSpeak] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState(() => localStorage.getItem('swb_quiz_autoSpeak') === 'true');
 
   const t = T[lang];
 
@@ -188,6 +191,14 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
           </div>
         )}
 
+        {wrongWordDetails.length > 0 && onPracticeWrong && (
+          <button
+            onClick={() => onPracticeWrong(score, questions.length, wrongWords)}
+            className="w-full py-3 mb-2 bg-orange-400 text-white rounded-2xl font-black text-sm hover:bg-orange-500 transition-all shadow-lg shadow-orange-100"
+          >
+            {t.practiceWrong}
+          </button>
+        )}
         <button onClick={() => onClose(score, questions.length, wrongWords)} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-base hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100">
           {t.back}
         </button>
@@ -205,7 +216,7 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose }) => {
         <span className="text-xs sm:text-base font-black text-slate-300 uppercase tracking-widest">{t.question} {currentIndex + 1} / {questions.length}</span>
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setAutoSpeak(v => !v)}
+            onClick={() => setAutoSpeak(v => { const next = !v; localStorage.setItem('swb_quiz_autoSpeak', String(next)); return next; })}
             className={`flex items-center space-x-1 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black transition-all border ${autoSpeak ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-400 hover:border-indigo-300'}`}
             title={t.autoSpeak}
           >

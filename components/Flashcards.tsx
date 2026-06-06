@@ -41,7 +41,7 @@ const T = {
 const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [autoPronounce, setAutoPronounce] = useState(false);
+  const [autoPronounce, setAutoPronounce] = useState(() => localStorage.getItem('swb_flash_autoSpeak') === 'true');
 
   const t = T[lang];
   const current = items[currentIndex];
@@ -86,7 +86,7 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete 
         <div className="flex items-center space-x-3">
           {/* Auto-pronounce toggle */}
           <button
-            onClick={() => setAutoPronounce(v => !v)}
+            onClick={() => setAutoPronounce(v => { const next = !v; localStorage.setItem('swb_flash_autoSpeak', String(next)); return next; })}
             className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black transition-all border ${autoPronounce ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-400 hover:border-indigo-300'}`}
             title={t.autoPronounce}
           >

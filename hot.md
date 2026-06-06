@@ -471,13 +471,78 @@
 
 ---
 
+---
+
+## Güncelleme — 2026-06-06 (8. Oturum — Öneriler Hayata Geçirildi)
+
+### 56. Ses Tercihi Kalıcılığı (Quiz + Flashcards)
+- `Quiz.tsx`: `autoSpeak` state'i artık `localStorage.getItem('swb_quiz_autoSpeak')` ile başlatılıyor; toggle edilince kaydediliyor.
+- `Flashcards.tsx`: `autoPronounce` aynı şekilde `swb_flash_autoSpeak` anahtarıyla kalıcı hale getirildi.
+- Kullanıcı sesli modu bir kez açınca her girişte o tercih korunuyor.
+
+### 57. Quiz Sonucu — "Yanlış Kelimeleri Flashcard'la Çalış"
+- `Quiz.tsx`'e `onPracticeWrong?: (score, total, wrongWords) => void` prop eklendi.
+- Sonuç ekranında yanlış kelime varsa turuncu "🔁 Yanlışları Flashcard'la Çalış" butonu görünüyor.
+- `App.tsx`: `onPracticeWrong` callback'i — aktiviteyi loglar, zorluk skorlarını günceller, yanlış kelimeleri flashcard moduna besler.
+- Akış: Quiz → Sonuç → Tek tuş → Yanlış kelimeler Flashcard'da.
+
+### 58. İstatistikler — Görsel Kelime Zorluk Barları
+- "En Zor Kelimeler" bölümü tamamen yenilendi.
+- Her kelime için: sıra numarası, isim/anlam, yüzde göstergesi (score/5 × 100), gradyan yatay progress bar, 🔥 ikon skoru.
+- Bar rengi skora göre: kırmızı (≥4), turuncu (≥3), sarı (daha az).
+- Görsel hiyerarşi çok daha belirgin.
+
+### 59. İstatistikler — Schema Cache Hata Ayrımı (Kritik Fix)
+- `PGRST200` kodu ile mesaj içindeki `'schema cache'` / `'could not find'` ayrı tip olarak tanımlandı: `type: 'schema_cache'`.
+- Schema cache hatasında farklı UI: 🔄 ikonu, açıklama metni, `NOTIFY pgrst, 'reload schema';` komutu tek satırda seçilebilir gösteriliyor.
+- Gerçek tablo eksikliğinde (42P01): eski davranış — SQL banner, kopyala butonu.
+- Her iki durumda da altta "🔄 Tekrar Dene" butonu var.
+
+### 60. Kelime Seti Paylaşımı (Etiket Bazlı)
+- Kelime listesinde bir etiket filtresi aktif olduğunda tag bar'a "📤 Paylaş" butonu eklendi.
+- Tıklanınca filtrelenmiş kelime listesi (`"<TAG>" Kelime Listesi — Super Word Buddy\n\n1. word — anlam\n...`) panoya kopyalanıyor.
+- TR/EN desteği. Kopyalama sonrası buton 2.5 saniye "✓ Kopyalandı!" gösteriyor.
+
+### 61. Profil Fotoğrafı (Supabase Storage Avatar)
+- `types.ts`'e `User.avatarUrl?: string` eklendi.
+- `UserMenu.tsx`: `userId`, `avatarUrl`, `onAvatarChange?` prop'ları eklendi.
+- Hesap Ayarları bölümüne "📷 Fotoğraf Yükle" dosya seçici eklendi.
+- Yükleme: `supabase.storage.from('avatars').upload(userId/avatar.ext, file, {upsert:true})` → public URL → `updateUser({ data: { avatar_url } })`.
+- Header butonu ve dropdown header: avatarUrl varsa `<img>` gösteriyor, yoksa harf fallback.
+- `App.tsx`: `onAvatarChange` → `setCurrentUser({ ...prev, avatarUrl: url })` ile anlık güncelleme.
+- **Not:** Supabase Dashboard'da `avatars` adlı public bucket oluşturulmalı.
+
+### 62. Favoriler Kalıcılık Düzeltmesi (Kritik Fix)
+- **Sorun:** DB insert'ler schema cache hatası nedeniyle sessizce başarısız oluyordu → sayfa yenilenince `loadFavoritesFromDB` boş DB döndürüyor → localStorage üzerine boş set yazıyordu → favoriler kayboluyor.
+- **Fix:** `favorites.ts`'te `loadFavoritesFromDB` yeniden yazıldı:
+  - DB veri döndürürse → DB kaynaklı: localStorage'ı güncelle, DB'yi döndür.
+  - DB boş ama localStorage dolu → localStorage'ı DB'ye push et (`upsert ignoreDuplicates`), localStorage döndür.
+  - DB hata verirse → localStorage'a fallback (önceki davranış).
+- Sonuç: Schema cache stale olsa bile favoriler korunur; DB hazır olduğunda otomatik senkronize olur.
+
+---
+
+## Güncellenen Dosyalar (8. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `types.ts` | GÜNCELLENDİ — `User.avatarUrl?: string` eklendi |
+| `utils/favorites.ts` | GÜNCELLENDİ — `loadFavoritesFromDB` merge/push mantığı, kalıcılık fix |
+| `components/Flashcards.tsx` | GÜNCELLENDİ — autoPronounce localStorage kalıcılığı |
+| `components/Quiz.tsx` | GÜNCELLENDİ — autoSpeak localStorage kalıcılığı, `onPracticeWrong` prop, "Tekrar Çalış" butonu |
+| `components/Statistics.tsx` | GÜNCELLENDİ — schema_cache/table_missing ayrımı, görsel hardWords barları |
+| `components/UserMenu.tsx` | GÜNCELLENDİ — avatar upload, `userId`/`avatarUrl`/`onAvatarChange` prop |
+| `App.tsx` | GÜNCELLENDİ — avatarUrl state, `onPracticeWrong`, tag paylaşımı, UserMenu yeni proplar |
+
+---
+
 ## Önerilen Sonraki Adımlar
 
 1. **Supabase kurulumu:** `supabase/schema.sql` dosyasını Supabase SQL Editörü'nde bir kez çalıştır — `user_activities`, `user_favorites`, `user_word_tags` tabloları oluşur.
-2. **Profil fotoğrafı / avatar:** Kullanıcı menüsüne avatarlı profil düzenleme eklenebilir (Supabase Storage).
-3. **Kelime seti paylaşımı:** Seçilmiş bir etiket grubunu (ör. "IELTS") link olarak başkalarıyla paylaşma.
-4. **Öğrenme takvimi:** Haftanın günlerine göre hedef belirleme (ör. hafta içi 5, hafta sonu 2).
-5. **Progress export:** İstatistikleri PDF/CSV olarak dışa aktarma.
+2. **Avatar bucket:** Supabase Dashboard'da `avatars` adlı public bucket oluştur (profil fotoğrafı için).
+3. **Öğrenme takvimi:** Haftanın günlerine göre hedef belirleme (ör. hafta içi 5, hafta sonu 2).
+4. **Progress export:** İstatistikleri PDF/CSV olarak dışa aktarma.
+5. **Quiz yanlış kelime analizi (DB bazlı):** Şu an spaced repetition localStorage tabanlı; `user_activities` tablosuna word-level data eklenirse daha detaylı analitik mümkün.
 | `public/icons/icon-192.png` | YENİ — PWA ikonu |
 | `public/icons/icon-512.png` | YENİ — PWA ikonu |
 | `public/icons/apple-touch-icon.png` | YENİ — iOS ikonu |
