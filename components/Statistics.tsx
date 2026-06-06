@@ -20,6 +20,12 @@ interface ActivityLog {
   created_at: string;
 }
 
+interface DbWordStat {
+  word_id: string;
+  correct: number;
+  wrong: number;
+}
+
 const ST = {
   tr: {
     title: 'İstatistikler 📊',
@@ -63,6 +69,10 @@ const ST = {
     schemaCacheDesc: 'Tabloları oluşturduktan sonra PostgREST önbelleğini yenileyin. SQL Editörü\'nde şunu çalıştırın:',
     retryBtn: 'Tekrar Dene',
     accuracyLabel: 'Hata Skoru',
+    wordAnalyticsTitle: 'DB Kelime Analizi',
+    wordAnalyticsSub: 'Tüm cihazlarda birikmiş doğru/yanlış verileri',
+    wrongCount: 'yanlış',
+    correctCount: 'doğru',
   },
   en: {
     title: 'Statistics 📊',
@@ -106,6 +116,10 @@ const ST = {
     schemaCacheDesc: 'After creating the tables, reload the PostgREST schema cache. Run this in the SQL Editor:',
     retryBtn: 'Retry',
     accuracyLabel: 'Error Score',
+    wordAnalyticsTitle: 'DB Word Analytics',
+    wordAnalyticsSub: 'Cumulative correct/wrong data across all devices',
+    wrongCount: 'wrong',
+    correctCount: 'correct',
   },
 };
 
@@ -149,6 +163,7 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
   const [loading, setLoading] = useState(true);
   const [wordStats, setWordStats] = useState({ total: 0, addedByMe: 0 });
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [dbWordStats, setDbWordStats] = useState<DbWordStat[]>([]);
   const [fetchError, setFetchError] = useState<{ type: 'table_missing' | 'schema_cache' | 'unknown'; message: string } | null>(null);
   const [showSql, setShowSql] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
@@ -199,6 +214,15 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
         return;
       }
       if (logData) setActivityLogs(logData);
+
+      // Load per-word DB stats (silently ignore if table not yet created)
+      const { data: wsData } = await supabase
+        .from('user_word_stats')
+        .select('word_id, correct, wrong')
+        .eq('user_id', userId)
+        .order('wrong', { ascending: false })
+        .limit(10);
+      if (wsData) setDbWordStats(wsData);
     } catch (err: any) {
       setFetchError({ type: 'unknown', message: err?.message || String(err) });
       console.error('İstatistikler getirilirken hata:', err);
@@ -524,6 +548,52 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
               </div>
             )}
           </div>
+
+          {/* DB word analytics */}
+          {dbWordStats.length > 0 && (
+            <div className="col-span-1 md:col-span-3 bg-white p-5 sm:p-8 rounded-[2rem] shadow-lg border border-slate-100">
+              <h4 className="font-black text-slate-800 text-sm sm:text-base mb-1 flex items-center space-x-2">
+                <span>📊</span>
+                <span>{t.wordAnalyticsTitle}</span>
+              </h4>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold mb-4">{t.wordAnalyticsSub}</p>
+              <div className="space-y-2 sm:space-y-3">
+                {dbWordStats.map(({ word_id, correct, wrong }) => {
+                  const item = vocabItems.find(v => v.id === word_id);
+                  if (!item) return null;
+                  const total = correct + wrong;
+                  const wrongRate = total > 0 ? Math.round((wrong / total) * 100) : 0;
+                  const barColor =
+                    wrongRate >= 60 ? 'from-red-500 to-orange-400' :
+                    wrongRate >= 40 ? 'from-orange-400 to-amber-300' :
+                    'from-amber-300 to-yellow-300';
+                  return (
+                    <div key={word_id} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 sm:px-4 py-2.5 border border-slate-100">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between mb-1">
+                          <div className="min-w-0 mr-2">
+                            <span className="font-black text-slate-800 text-sm truncate block">{item.word}</span>
+                            <span className="text-indigo-500 font-bold text-[10px] sm:text-xs truncate block">{item.meaning}</span>
+                          </div>
+                          <span className="shrink-0 text-[10px] font-black text-orange-500 whitespace-nowrap">{wrongRate}%</span>
+                        </div>
+                        <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full bg-gradient-to-r ${barColor} rounded-full transition-all duration-700`}
+                            style={{ width: `${wrongRate}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right min-w-[36px]">
+                        <span className="text-[10px] font-black text-red-400 block">{wrong} {t.wrongCount}</span>
+                        <span className="text-[10px] font-black text-green-500 block">{correct} {t.correctCount}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Flashcard count */}
           <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-lg border border-slate-100 flex flex-col items-center text-center h-[260px] sm:h-[380px]">

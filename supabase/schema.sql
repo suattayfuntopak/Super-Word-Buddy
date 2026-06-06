@@ -79,6 +79,72 @@ CREATE POLICY "Users manage own word tags"
 -- );
 
 -- ============================================================
+-- 5. USER WORD STATS (per-word correct/wrong counts — cross-device analytics)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_word_stats (
+  user_id    UUID    NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  word_id    TEXT    NOT NULL,
+  correct    INTEGER NOT NULL DEFAULT 0,
+  wrong      INTEGER NOT NULL DEFAULT 0,
+  last_seen  TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, word_id)
+);
+
+ALTER TABLE user_word_stats ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own word stats" ON user_word_stats;
+CREATE POLICY "Users manage own word stats"
+  ON user_word_stats FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Atomic upsert function — increments correct/wrong counts
+CREATE OR REPLACE FUNCTION upsert_word_stat(
+  p_user_id UUID,
+  p_word_id TEXT,
+  p_correct INTEGER DEFAULT 0,
+  p_wrong   INTEGER DEFAULT 0
+) RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  INSERT INTO user_word_stats (user_id, word_id, correct, wrong, last_seen)
+  VALUES (p_user_id, p_word_id, p_correct, p_wrong, NOW())
+  ON CONFLICT (user_id, word_id) DO UPDATE SET
+    correct   = user_word_stats.correct + EXCLUDED.correct,
+    wrong     = user_word_stats.wrong   + EXCLUDED.wrong,
+    last_seen = NOW();
+$$;
+
+-- ============================================================
+-- 6. AVATARS STORAGE BUCKET (for profile photo upload)
+-- ============================================================
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('avatars', 'avatars', true, 5242880, ARRAY['image/jpeg','image/png','image/webp','image/gif'])
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Users upload own avatar" ON storage.objects;
+CREATE POLICY "Users upload own avatar" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'avatars' AND name LIKE auth.uid()::text || '/%');
+
+DROP POLICY IF EXISTS "Public read avatars" ON storage.objects;
+CREATE POLICY "Public read avatars" ON storage.objects
+  FOR SELECT TO public
+  USING (bucket_id = 'avatars');
+
+DROP POLICY IF EXISTS "Users update own avatar" ON storage.objects;
+CREATE POLICY "Users update own avatar" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'avatars' AND name LIKE auth.uid()::text || '/%');
+
+DROP POLICY IF EXISTS "Users delete own avatar" ON storage.objects;
+CREATE POLICY "Users delete own avatar" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'avatars' AND name LIKE auth.uid()::text || '/%');
+
+-- ============================================================
 -- Refresh PostgREST schema cache (run after any table/policy change)
 -- ============================================================
 NOTIFY pgrst, 'reload schema';

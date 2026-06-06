@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
+          strategies: 'injectManifest',
+          srcDir: '.',
+          filename: 'sw.ts',
           manifest: {
             name: 'Super Word Buddy',
             short_name: 'Word Buddy',
@@ -30,28 +33,8 @@ export default defineConfig(({ mode }) => {
               { src: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
             ]
           },
-          workbox: {
+          injectManifest: {
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-            runtimeCaching: [
-              {
-                urlPattern: /^https:\/\/cdn\.tailwindcss\.com/,
-                handler: 'StaleWhileRevalidate',
-                options: { cacheName: 'tailwind-cdn' }
-              },
-              {
-                urlPattern: /^https:\/\/flagcdn\.com/,
-                handler: 'CacheFirst',
-                options: {
-                  cacheName: 'flag-images',
-                  expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 30 }
-                }
-              },
-              {
-                urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com/,
-                handler: 'StaleWhileRevalidate',
-                options: { cacheName: 'google-fonts' }
-              }
-            ]
           }
         })
       ],

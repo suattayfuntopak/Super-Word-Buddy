@@ -575,13 +575,56 @@
 
 ---
 
+---
+
+## Güncelleme — 2026-06-06 (10. Oturum — Avatar Bucket, Kelime Analitik DB, Push Notification SW)
+
+### 65. Avatar Bucket — Schema.sql'e Eklendi
+- `storage.buckets` tablosuna `avatars` bucket'ı otomatik oluşturma SQL'i eklendi (`ON CONFLICT DO NOTHING` ile idempotent).
+- Storage RLS politikaları eklendi: upload/select/update/delete — kullanıcı sadece kendi `userId/` klasörüne erişebiliyor.
+- Artık Supabase Dashboard'a gitmeye gerek yok — `schema.sql` çalıştırınca bucket da oluşuyor.
+
+### 66. Kelime Bazlı DB Analitik (Quiz word-level analytics)
+- `user_word_stats` tablosu eklendi: `(user_id, word_id)` primary key, `correct` / `wrong` sayaçları.
+- `upsert_word_stat(p_user_id, p_word_id, p_correct, p_wrong)` PostgreSQL fonksiyonu: atomik increment ile `INSERT ... ON CONFLICT DO UPDATE`.
+- `utils/wordStats.ts` oluşturuldu: `logWordResults` (quiz bitişinde toplu upsert) ve `loadWordStats` fonksiyonları.
+- `App.tsx`: Quiz `onClose` ve `onPracticeWrong` callback'lerinde her soru için kelime sonuçları DB'ye gönderiliyor.
+- `Statistics.tsx`: "📊 DB Kelime Analizi" yeni bölümü — en çok yanlış yapılan kelimeler, yanlış oranı, doğru/yanlış sayısı gösteriliyor. Tüm cihazlarda birikmiş veri.
+
+### 67. Push Notification — Service Worker Notification Click
+- `vite.config.ts`: `generateSW` → `injectManifest` stratejisine geçildi (SW kaynağı özelleştirilebilir hale geldi).
+- `sw.ts` oluşturuldu: workbox precache + runtime caching (tailwind CDN, flagcdn, Google Fonts) + `notificationclick` event handler.
+  - Tıklama: açık pencereyi focus'lar + `postMessage({ type: 'NOTIFICATION_CLICK', action })` gönderir.
+  - Pencere yoksa `clients.openWindow('/')` ile uygulamayı açar.
+- `utils/dailyGoal.ts` yeniden yazıldı:
+  - `showNotificationViaSW`: SW `reg.showNotification()` kullanıyor (actions + vibrate + badge desteği).
+  - `sendGoalNotification`: async, vibrate `[200,100,200]`, badge, `actions: [{action:'stats', title:'📊 ...'}]`.
+  - `sendStreakNotification`: yeni — 3/7/14/30/60/100 günlük seri milestone'larında tetikleniyor.
+- `App.tsx`:
+  - `checkDailyGoal`: await eklenidi; hedef tamamlanınca streak hesaplanıyor, milestone'da `sendStreakNotification` tetikleniyor.
+  - SW message listener eklendi: `NOTIFICATION_CLICK` mesajında uygulama `'stats'` state'ine geçiyor.
+
+---
+
+## Güncellenen Dosyalar (10. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `supabase/schema.sql` | GÜNCELLENDİ — `user_word_stats` tablosu, `upsert_word_stat` fonksiyonu, avatar bucket + policies |
+| `utils/wordStats.ts` | YENİ — `logWordResults`, `loadWordStats` |
+| `sw.ts` | YENİ — custom service worker (precache + runtimeCache + notificationclick) |
+| `vite.config.ts` | GÜNCELLENDİ — `injectManifest` stratejisi |
+| `utils/dailyGoal.ts` | GÜNCELLENDİ — SW notification, streak milestone bildirim |
+| `App.tsx` | GÜNCELLENDİ — logWordResults, streak check, SW message listener |
+| `components/Statistics.tsx` | GÜNCELLENDİ — DB kelime analizi bölümü |
+
+---
+
 ## Önerilen Sonraki Adımlar
 
-1. **Supabase kurulumu:** `supabase/schema.sql` dosyasını (artık idempotent) doğru Supabase projesinde SQL Editörü'nde çalıştır.
-2. **Avatar bucket:** Supabase Dashboard'da `avatars` adlı public bucket oluştur (profil fotoğrafı için).
-3. **Progress export:** İstatistikleri PDF/CSV olarak dışa aktarma.
-4. **Quiz word-level DB analitik:** `user_activities` tablosuna kelime bazlı log eklenerek daha derin analitik mümkün olur.
-5. **Bildirim kanalı:** Günlük hedef tostu'na ek olarak push notification entegrasyonu (Web Push API).
+1. **schema.sql yeniden çalıştır:** Avatar bucket ve `user_word_stats` tablosu için güncellenmiş `schema.sql`'i Supabase SQL Editörü'nde çalıştır.
+2. **Progress export:** İstatistikleri CSV olarak dışa aktarma butonu.
+3. **Writing word stats:** Yazma alıştırmalarında da `logWordResults` çağrısı eklenerek kelime analizi genişletilir.
 | `public/icons/icon-192.png` | YENİ — PWA ikonu |
 | `public/icons/icon-512.png` | YENİ — PWA ikonu |
 | `public/icons/apple-touch-icon.png` | YENİ — iOS ikonu |

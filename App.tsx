@@ -9,7 +9,8 @@ import { getFavoriteIds, loadFavoritesFromDB, toggleFavoriteDB } from './utils/f
 import { Theme, getStoredTheme, storeTheme, applyTheme } from './utils/theme';
 import { Lang, getStoredLang, storeLang, translations } from './utils/i18n';
 import { getTagsMap, setWordTagsDB, getAllUserTags, loadTagsFromDB } from './utils/wordTags';
-import { getDailyGoal, setDailyGoal, sendGoalNotification } from './utils/dailyGoal';
+import { getDailyGoal, setDailyGoal, sendGoalNotification, sendStreakNotification } from './utils/dailyGoal';
+import { logWordResults } from './utils/wordStats';
 import { getTodayGoal, isRestDay } from './utils/weeklySchedule';
 import FileUpload from './components/FileUpload';
 import Flashcards from './components/Flashcards';
@@ -121,6 +122,16 @@ const App: React.FC = () => {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Navigate to stats when user clicks a push notification
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'NOTIFICATION_CLICK') setState('stats');
+    };
+    navigator.serviceWorker.addEventListener('message', handler);
+    return () => navigator.serviceWorker.removeEventListener('message', handler);
   }, []);
 
   useEffect(() => {
@@ -273,6 +284,8 @@ const App: React.FC = () => {
     }
   };
 
+  const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
+
   const checkDailyGoal = async () => {
     if (!currentUser) return;
     const goalForToday = getTodayGoal(currentUser.id, dailyGoalValue);
@@ -285,9 +298,29 @@ const App: React.FC = () => {
       .gte('created_at', `${today}T00:00:00`);
 
     if (count === goalForToday) {
-      sendGoalNotification(goalForToday, lang);
+      await sendGoalNotification(goalForToday, lang);
       setGoalReached(true);
       setTimeout(() => setGoalReached(false), 6000);
+
+      // Check streak milestone for special notification
+      const { data: recent } = await supabase
+        .from('user_activities')
+        .select('created_at')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (recent) {
+        const activeDays = new Set(recent.map((r: any) => r.created_at.split('T')[0]));
+        let streak = 0;
+        const d = new Date();
+        while (activeDays.has(d.toISOString().split('T')[0])) {
+          streak++;
+          d.setDate(d.getDate() - 1);
+        }
+        if (STREAK_MILESTONES.includes(streak)) {
+          await sendStreakNotification(streak, lang);
+        }
+      }
     }
   };
 
@@ -892,28 +925,28 @@ const App: React.FC = () => {
           onClose={async (score, total, wrongWordStrings) => {
             await logActivity('quiz', score, total);
             if (currentUser) {
-              wrongWordStrings.forEach(wordStr => {
-                const item = vocabItems.find(v => v.word === wordStr);
-                if (item) updateWordDifficulty(currentUser.id, item.id, false);
-              });
-              quizQuestions.filter(q => !wrongWordStrings.includes(q.word)).forEach(q => {
+              const wordResults = quizQuestions.map(q => {
                 const item = vocabItems.find(v => v.word === q.word);
-                if (item) updateWordDifficulty(currentUser.id, item.id, true);
-              });
+                if (!item) return null;
+                const isWrong = wrongWordStrings.includes(q.word);
+                updateWordDifficulty(currentUser.id, item.id, !isWrong);
+                return { wordId: item.id, correct: isWrong ? 0 : 1, wrong: isWrong ? 1 : 0 };
+              }).filter(Boolean) as { wordId: string; correct: number; wrong: number }[];
+              logWordResults(currentUser.id, wordResults);
             }
             setState('selection');
           }}
           onPracticeWrong={async (score, total, wrongWordStrings) => {
             await logActivity('quiz', score, total);
             if (currentUser) {
-              wrongWordStrings.forEach(wordStr => {
-                const item = vocabItems.find(v => v.word === wordStr);
-                if (item) updateWordDifficulty(currentUser.id, item.id, false);
-              });
-              quizQuestions.filter(q => !wrongWordStrings.includes(q.word)).forEach(q => {
+              const wordResults = quizQuestions.map(q => {
                 const item = vocabItems.find(v => v.word === q.word);
-                if (item) updateWordDifficulty(currentUser.id, item.id, true);
-              });
+                if (!item) return null;
+                const isWrong = wrongWordStrings.includes(q.word);
+                updateWordDifficulty(currentUser.id, item.id, !isWrong);
+                return { wordId: item.id, correct: isWrong ? 0 : 1, wrong: isWrong ? 1 : 0 };
+              }).filter(Boolean) as { wordId: string; correct: number; wrong: number }[];
+              logWordResults(currentUser.id, wordResults);
             }
             const wrongItems = vocabItems.filter(v => wrongWordStrings.includes(v.word));
             if (wrongItems.length > 0) {
