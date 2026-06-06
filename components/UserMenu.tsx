@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Theme } from '../utils/theme';
 import { Lang } from '../utils/i18n';
-import { requestNotificationPermission } from '../utils/dailyGoal';
+import { requestNotificationPermission, getReminderTime, setReminderTime } from '../utils/dailyGoal';
+import { Accent, getAccent, setAccent } from '../utils/speak';
 import { supabase } from '../services/supabaseClient';
 import { WeeklySchedule, getWeeklySchedule, setWeeklySchedule } from '../utils/weeklySchedule';
 
@@ -33,6 +34,16 @@ const UserMenu: React.FC<UserMenuProps> = ({
   const [localAvatarUrl, setLocalAvatarUrl] = useState(avatarUrl);
   const [showSchedule, setShowSchedule] = useState(false);
   const [schedule, setSchedule] = useState<WeeklySchedule>({});
+  const [accent, setAccentState] = useState<Accent>(getAccent);
+  const [reminderTime, setReminderTimeState] = useState<{ hour: number; minute: number } | null>(getReminderTime);
+  const [reminderHourInput, setReminderHourInput] = useState(() => {
+    const rt = getReminderTime();
+    return rt ? String(rt.hour).padStart(2, '0') : '08';
+  });
+  const [reminderMinInput, setReminderMinInput] = useState(() => {
+    const rt = getReminderTime();
+    return rt ? String(rt.minute).padStart(2, '0') : '00';
+  });
   const ref = useRef<HTMLDivElement>(null);
   const isTr = lang === 'tr';
 
@@ -102,6 +113,25 @@ const UserMenu: React.FC<UserMenuProps> = ({
   const handleGoalChange = async (n: number) => {
     if (n > 0) await requestNotificationPermission();
     onDailyGoalChange(n);
+  };
+
+  const handleAccentChange = (a: Accent) => {
+    setAccent(a);
+    setAccentState(a);
+  };
+
+  const handleReminderSave = async () => {
+    const h = parseInt(reminderHourInput, 10);
+    const m = parseInt(reminderMinInput, 10);
+    if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return;
+    await requestNotificationPermission();
+    setReminderTime(h, m);
+    setReminderTimeState({ hour: h, minute: m });
+  };
+
+  const handleReminderClear = () => {
+    setReminderTime(null, 0);
+    setReminderTimeState(null);
   };
 
   const handleEmailChange = async () => {
@@ -184,6 +214,28 @@ const UserMenu: React.FC<UserMenuProps> = ({
               </div>
             </div>
 
+            {/* Voice Accent */}
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                {isTr ? 'Ses Tonu' : 'Voice Accent'}
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { value: 'en-GB' as Accent, flag: 'https://flagcdn.com/w40/gb.png', label: isTr ? '🇬🇧 İngiliz' : '🇬🇧 British' },
+                  { value: 'en-US' as Accent, flag: 'https://flagcdn.com/w40/us.png', label: isTr ? '🇺🇸 Amerikan' : '🇺🇸 American' },
+                ]).map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleAccentChange(opt.value)}
+                    className={`flex items-center space-x-2 py-2 px-3 rounded-xl transition-all ${accent === opt.value ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    <img src={opt.flag} className="w-5 h-auto rounded-sm shrink-0" alt={opt.label} />
+                    <span className="text-xs font-black">{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Language */}
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
@@ -227,6 +279,50 @@ const UserMenu: React.FC<UserMenuProps> = ({
                   className="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-600 font-black flex items-center justify-center border border-slate-100 shadow-sm transition-all"
                 >+</button>
               </div>
+            </div>
+
+            {/* Reminder */}
+            <div className="border-t border-slate-100 pt-3">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                ⏰ {isTr ? 'Günlük Hatırlatıcı' : 'Daily Reminder'}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={0} max={23}
+                  value={reminderHourInput}
+                  onChange={e => setReminderHourInput(e.target.value.padStart(2, '0').slice(-2))}
+                  className="w-12 text-center text-xs font-black px-1 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:border-indigo-400 outline-none"
+                  placeholder="HH"
+                />
+                <span className="font-black text-slate-400">:</span>
+                <input
+                  type="number"
+                  min={0} max={59}
+                  value={reminderMinInput}
+                  onChange={e => setReminderMinInput(e.target.value.padStart(2, '0').slice(-2))}
+                  className="w-12 text-center text-xs font-black px-1 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:border-indigo-400 outline-none"
+                  placeholder="MM"
+                />
+                <button
+                  onClick={handleReminderSave}
+                  className="flex-1 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-black text-[10px] rounded-xl transition-all uppercase tracking-wide"
+                >
+                  {isTr ? 'Kaydet' : 'Save'}
+                </button>
+                {reminderTime && (
+                  <button
+                    onClick={handleReminderClear}
+                    className="py-1.5 px-2 bg-red-50 hover:bg-red-100 text-red-400 font-black text-[10px] rounded-xl transition-all"
+                    title={isTr ? 'Hatırlatıcıyı Kapat' : 'Disable Reminder'}
+                  >✕</button>
+                )}
+              </div>
+              {reminderTime && (
+                <p className="text-[9px] text-emerald-500 font-bold mt-1">
+                  ✓ {reminderTime.hour.toString().padStart(2,'0')}:{reminderTime.minute.toString().padStart(2,'0')} {isTr ? 'aktif' : 'active'}
+                </p>
+              )}
             </div>
 
             {/* Weekly Schedule */}

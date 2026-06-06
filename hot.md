@@ -735,3 +735,72 @@
 5. **Toplu etiket işlemleri:** Kelime listesinde çoklu seçim → toplu etiket ekle/kaldır.
 6. **Bildirim zamanlaması:** Kullanıcı belirli bir saatte "Çalışma zamanı!" bildirimi alabilsin (cron-style).
 
+
+---
+
+## Güncelleme — 2026-06-06 (14. Oturum — 6 Öneri Hayata Geçirildi)
+
+### 76. CSV Dışa Aktarma (Öneri 2)
+- `Statistics.tsx`'e `exportCSV()` fonksiyonu eklendi.
+- İstatistikler başlığının yanına `CSV İndir / Export CSV` butonu eklendi.
+- Tüm `vocabItems` (kelime, anlam, türler, örnek cümleler) UTF-8 CSV olarak indirilir.
+- Dosya adı: `super-word-buddy-YYYY-MM-DD.csv` formatında tarih içerir.
+- TR/EN çeviri desteği (sütun başlıkları dile göre değişiyor).
+
+### 77. Writing Word Stats — Yazma Alıştırması DB Analizi (Öneri 3)
+- `WordWriting.tsx`: `useRef<Set<number>>` ile hangi kelimelerin "Cevabı Gör" ile açıldığı takip ediliyor.
+  - `revealAnswer()` tetiklendiğinde kelime indeksi `revealedRef`'e ekleniyor (yanlış kabul).
+  - `onClose` imzası güncellendi: `(score, total, wordResults?)` — sonuçlar App'e iletiliyor.
+- `App.tsx`: Writing callback'i `logWordResults(currentUser.id, wordResults)` ile tamamlandı.
+- Sonuç: Yazma kampı da `user_word_stats` tablosuna veri yazıyor; istatistikler tüm aktiviteleri kapsıyor.
+
+### 78. Global Ses Tonu Tercihi UK / US (Öneri 4)
+- `utils/speak.ts` yeniden yazıldı: `Accent = 'en-GB' | 'en-US'` tipi eklendi.
+  - `getAccent()` / `setAccent()` → `localStorage.swb_accent` üzerinde saklanıyor.
+  - `speak(text, lang?)` artık `lang` verilmezse `getAccent()` ile global tercihi kullanıyor.
+- `UserMenu.tsx`: 🇬🇧 İngiliz / 🇺🇸 Amerikan 2-butonlu `Ses Tonu` bölümü eklendi (Dil seçicisinin üstünde).
+
+### 79. Toplu Etiket İşlemleri (Öneri 5)
+- `App.tsx`'e 3 yeni state: `bulkSelectedIds`, `showBulkTagModal`, `bulkTagInput`.
+- Kelime listesi başlığında ☑️ butonu: seçili kelime sayısını gösteriyor.
+- Her kelime kartına tıklanınca amber vurgulu seçim toggle'ı çalışıyor (kart üstünde ☑ ikonu).
+- Seçim varken sayfa altında sabit action bar: `X kelime seçildi`, `🏷️ Etiket Ekle`, `İptal`.
+- `showBulkTagModal`: preset etiketler + özel etiket input (Enter ile uygula).
+- Uygulama: `Promise.all([...bulkSelectedIds].map(id => addTagToWord(id, tag)))`.
+
+### 80. Zamanlanmış Günlük Hatırlatıcı Bildirimi (Öneri 6)
+- `utils/dailyGoal.ts`'e eklendi: `getReminderTime`, `setReminderTime`, `checkAndSendReminderIfDue(lang)`.
+  - sessionStorage throttle: aynı saat diliminde birden fazla bildirim gönderilmez.
+- `UserMenu.tsx`: `⏰ Günlük Hatırlatıcı` bölümü — HH:MM input + Kaydet + ✕ devre dışı.
+- `App.tsx`: `setInterval(checkAndSendReminderIfDue, 60_000)` — her dakika kontrol ediyor.
+
+### 81. Anonim Katkı Sıralaması — Leaderboard (Öneri 7)
+- `Statistics.tsx`: `vocabulary` tablosundan user_id başına kelime sayısı hesaplanıyor.
+  - En fazla kelime ekleyen 10 kullanıcı sıralanıyor; kendi `userId` → `Sen / You` olarak gösteriliyor.
+  - Diğer kullanıcılar anonim: `#abc123` (userId ilk 6 karakter).
+  - 🥇🥈🥉 madalya ikonları, kendi sıran için indigo vurgu.
+  - TR/EN çeviri desteği. Best-effort: hata akışı bozmaz.
+
+---
+
+## Güncellenen Dosyalar (14. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `utils/speak.ts` | GÜNCELLENDİ — `Accent` tipi, `getAccent`, `setAccent`, global varsayılan |
+| `utils/dailyGoal.ts` | GÜNCELLENDİ — `getReminderTime`, `setReminderTime`, `checkAndSendReminderIfDue` |
+| `components/UserMenu.tsx` | GÜNCELLENDİ — Ses Tonu seçici, Günlük Hatırlatıcı bölümü |
+| `components/WordWriting.tsx` | GÜNCELLENDİ — reveal takibi, `wordResults` onClose'a eklendi |
+| `components/Statistics.tsx` | GÜNCELLENDİ — CSV export butonu, leaderboard bölümü, çeviri anahtarları |
+| `App.tsx` | GÜNCELLENDİ — reminder interval, writing wordResults log, bulk tag state + UI + modal |
+
+---
+
+## Önerilen Sonraki Adımlar (Güncel)
+
+1. **schema.sql yeniden çalıştır:** Avatar bucket ve `user_word_stats` tablosu için güncellenmiş SQL'i Supabase SQL Editörü'nde çalıştır.
+2. **Kullanıcı adı Leaderboard'da:** `auth.users` tablosundan display_name/email prefix çekilirse katkıcılar daha anlamlı görünür (RLS izniyle).
+3. **CSV + Aktivite Logları:** Aktivite geçmişi (tip, tarih, skor) da CSV'ye dahil edilebilir.
+4. **Toplu silme:** Bulk seçim moduna silme aksiyonu da eklenebilir (ownership kontrolü ile).
+5. **SW PeriodicSync:** Chromium'da `periodicsync` API ile uygulama kapalıyken de zamanlanmış bildirim mümkün.
+6. **DB → localStorage spaced repetition sync:** Quiz'de `user_word_stats` verisi `wordDifficulty` localStorage'ına da yansıtılırsa çapraz cihaz spaced repetition sağlanır.

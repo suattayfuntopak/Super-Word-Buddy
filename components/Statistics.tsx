@@ -73,6 +73,11 @@ const ST = {
     wordAnalyticsSub: 'Tüm cihazlarda birikmiş doğru/yanlış verileri',
     wrongCount: 'yanlış',
     correctCount: 'doğru',
+    exportBtn: 'CSV İndir',
+    leaderboardTitle: 'En Çok Katkıda Bulunanlar',
+    leaderboardSub: 'Kelime havuzuna en fazla kelime ekleyen kullanıcılar',
+    leaderboardYou: '(Sen)',
+    leaderboardNone: 'Henüz katkı verisi yok.',
   },
   en: {
     title: 'Statistics 📊',
@@ -120,6 +125,11 @@ const ST = {
     wordAnalyticsSub: 'Cumulative correct/wrong data across all devices',
     wrongCount: 'wrong',
     correctCount: 'correct',
+    exportBtn: 'Export CSV',
+    leaderboardTitle: 'Top Contributors',
+    leaderboardSub: 'Users who added the most words to the pool',
+    leaderboardYou: '(You)',
+    leaderboardNone: 'No contribution data yet.',
   },
 };
 
@@ -167,6 +177,7 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
   const [fetchError, setFetchError] = useState<{ type: 'table_missing' | 'schema_cache' | 'unknown'; message: string } | null>(null);
   const [showSql, setShowSql] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<{ user_id: string; word_count: number; name: string }[]>([]);
 
   const t = ST[lang];
 
@@ -223,6 +234,31 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
         .order('wrong', { ascending: false })
         .limit(10);
       if (wsData) setDbWordStats(wsData);
+
+      // Leaderboard: count words per user_id (anonymous display)
+      try {
+        const { data: lbData } = await supabase
+          .from('vocabulary')
+          .select('user_id')
+          .not('user_id', 'is', null);
+        if (lbData) {
+          const counts: Record<string, number> = {};
+          lbData.forEach((row: any) => {
+            if (row.user_id) counts[row.user_id] = (counts[row.user_id] || 0) + 1;
+          });
+          const sorted = Object.entries(counts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 10)
+            .map(([uid, cnt]) => ({
+              user_id: uid,
+              word_count: cnt,
+              name: uid === userId
+                ? (lang === 'tr' ? 'Sen' : 'You')
+                : `#${uid.slice(0, 6)}`
+            }));
+          setLeaderboard(sorted);
+        }
+      } catch { /* leaderboard is best-effort */ }
     } catch (err: any) {
       setFetchError({ type: 'unknown', message: err?.message || String(err) });
       console.error('İstatistikler getirilirken hata:', err);
@@ -301,6 +337,25 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
     });
   };
 
+  const exportCSV = () => {
+    const header = lang === 'tr'
+      ? 'Kelime,Anlam,Kelime Turu EN,Kelime Turu TR,Ornek Cumle,Ornek Cumle TR\n'
+      : 'Word,Meaning,Type EN,Type TR,Example Sentence,Example TR\n';
+    const rows = vocabItems.map(v =>
+      [v.word, v.meaning, v.wordTypeEn, v.wordTypeTr,
+       v.exampleSentence.replace(/,/g, ';'),
+       v.exampleSentenceTurkish.replace(/,/g, ';')]
+        .map(s => `"${(s || '').replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `super-word-buddy-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const totalActivities = activityLogs.length;
   const streak = calculateStreak();
   const todayCount = todayActivityCount();
@@ -321,9 +376,17 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
           <h2 className="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight">{t.title}</h2>
           {t.subtitle && <p className="text-slate-400 font-bold text-xs sm:text-lg uppercase tracking-[0.2em] sm:tracking-[0.3em]">{t.subtitle}</p>}
         </div>
-        <button onClick={onBack} className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm">
-          {t.back}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportCSV}
+            className="text-[10px] sm:text-xs font-black text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 px-3 py-1.5 rounded-xl transition-all uppercase tracking-wide"
+          >
+            {t.exportBtn}
+          </button>
+          <button onClick={onBack} className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm">
+            {t.back}
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -640,6 +703,38 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
               <span className="text-[10px] sm:text-xs font-black text-blue-700">{writingDetails.totalCorrect.toLocaleString('tr-TR')} ✓</span>
             </div>
           </div>
+
+          {/* Leaderboard */}
+          {leaderboard.length > 0 && (
+            <div className="col-span-1 md:col-span-3 bg-white p-5 sm:p-8 rounded-[2rem] shadow-lg border border-slate-100">
+              <h4 className="font-black text-slate-800 text-sm sm:text-base mb-1 flex items-center space-x-2">
+                <span>🏆</span>
+                <span>{t.leaderboardTitle}</span>
+              </h4>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold mb-4">{t.leaderboardSub}</p>
+              <div className="space-y-2">
+                {leaderboard.map(({ user_id, word_count, name }, rank) => {
+                  const isMe = user_id === userId;
+                  const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : null;
+                  return (
+                    <div key={user_id} className={`flex items-center gap-3 rounded-xl px-3 sm:px-4 py-2.5 border ${isMe ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100'}`}>
+                      <span className="text-base font-black w-7 text-center shrink-0">
+                        {medal ?? `#${rank + 1}`}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className={`font-black text-sm truncate block ${isMe ? 'text-indigo-700' : 'text-slate-700'}`}>
+                          {name}{isMe && <span className="ml-1 text-[10px] text-indigo-400 font-bold">{t.leaderboardYou}</span>}
+                        </span>
+                      </div>
+                      <span className={`shrink-0 font-black text-sm ${isMe ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        {word_count.toLocaleString('tr-TR')} 📚
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
         </div>
       )}

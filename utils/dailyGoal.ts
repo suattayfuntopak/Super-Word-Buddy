@@ -54,3 +54,51 @@ export const sendStreakNotification = async (streak: number, lang: Lang): Promis
     ],
   });
 };
+
+// ── Scheduled reminder ──────────────────────────────────────────────────────
+// Storage keys
+const REMINDER_HOUR_KEY  = 'swb_reminder_hour';   // '0'–'23' or '' (disabled)
+const REMINDER_MIN_KEY   = 'swb_reminder_min';    // '0'–'59'
+
+export const getReminderTime = (): { hour: number; minute: number } | null => {
+  const h = localStorage.getItem(REMINDER_HOUR_KEY);
+  const m = localStorage.getItem(REMINDER_MIN_KEY);
+  if (h === null || h === '') return null;
+  return { hour: parseInt(h, 10), minute: parseInt(m ?? '0', 10) };
+};
+
+export const setReminderTime = (hour: number | null, minute: number): void => {
+  if (hour === null) {
+    localStorage.removeItem(REMINDER_HOUR_KEY);
+    localStorage.removeItem(REMINDER_MIN_KEY);
+  } else {
+    localStorage.setItem(REMINDER_HOUR_KEY, String(hour));
+    localStorage.setItem(REMINDER_MIN_KEY, String(minute));
+  }
+};
+
+/** Called by App.tsx once per minute (via setInterval or visibility change). */
+export const checkAndSendReminderIfDue = async (lang: Lang): Promise<void> => {
+  const rt = getReminderTime();
+  if (!rt) return;
+  const now = new Date();
+  if (now.getHours() !== rt.hour || now.getMinutes() !== rt.minute) return;
+
+  // Throttle: fire at most once per hour using a flag in sessionStorage
+  const throttleKey = `swb_reminder_sent_${now.toDateString()}_${rt.hour}`;
+  if (sessionStorage.getItem(throttleKey)) return;
+  sessionStorage.setItem(throttleKey, '1');
+
+  await showNotificationViaSW('Super Word Buddy ⏰', {
+    body: lang === 'tr'
+      ? 'Çalışma zamanı! Bugünkü kelimelerini çalış. 📚'
+      : "Study time! Let's work on today's words. 📚",
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: 'daily-reminder',
+    vibrate: [200, 100, 200],
+    actions: [
+      { action: 'open', title: lang === 'tr' ? '📚 Başla' : '📚 Start' },
+    ],
+  });
+};

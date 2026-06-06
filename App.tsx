@@ -9,7 +9,7 @@ import { getFavoriteIds, loadFavoritesFromDB, toggleFavoriteDB } from './utils/f
 import { Theme, getStoredTheme, storeTheme, applyTheme } from './utils/theme';
 import { Lang, getStoredLang, storeLang, translations } from './utils/i18n';
 import { getTagsMap, setWordTagsDB, getAllUserTags, loadTagsFromDB } from './utils/wordTags';
-import { getDailyGoal, setDailyGoal, sendGoalNotification, sendStreakNotification } from './utils/dailyGoal';
+import { getDailyGoal, setDailyGoal, sendGoalNotification, sendStreakNotification, checkAndSendReminderIfDue } from './utils/dailyGoal';
 import { logWordResults } from './utils/wordStats';
 import { getTodayGoal, isRestDay } from './utils/weeklySchedule';
 import FileUpload from './components/FileUpload';
@@ -62,6 +62,11 @@ const App: React.FC = () => {
 
   // Tag share
   const [shareTagCopied, setShareTagCopied] = useState(false);
+
+  // Bulk tag selection
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkTagModal, setShowBulkTagModal] = useState(false);
+  const [bulkTagInput, setBulkTagInput] = useState('');
 
   // Header/footer visibility (hide on scroll down / activity states)
   const [headerVisible, setHeaderVisible] = useState(true);
@@ -133,6 +138,14 @@ const App: React.FC = () => {
     navigator.serviceWorker.addEventListener('message', handler);
     return () => navigator.serviceWorker.removeEventListener('message', handler);
   }, []);
+
+  // Daily reminder check — runs every minute when app is open
+  useEffect(() => {
+    const check = () => checkAndSendReminderIfDue(lang);
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
+  }, [lang]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -740,6 +753,14 @@ const App: React.FC = () => {
                   <span>{showFavoritesOnly ? '❤️' : '🤍'}</span>
                   <span className="hidden sm:inline">{t.favoritesFilter}</span>
                 </button>
+                <button
+                  onClick={() => { setBulkSelectedIds(new Set()); }}
+                  className={`flex items-center space-x-1 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all border-2 whitespace-nowrap ${bulkSelectedIds.size > 0 ? 'bg-amber-50 border-amber-300 text-amber-600' : 'bg-white border-slate-100 text-slate-400 hover:border-amber-300 hover:text-amber-500'}`}
+                  title={lang === 'tr' ? 'Çoklu Seçim' : 'Multi-select'}
+                >
+                  <span>☑️</span>
+                  {bulkSelectedIds.size > 0 && <span>{bulkSelectedIds.size}</span>}
+                </button>
               </div>
             </div>
 
@@ -775,10 +796,23 @@ const App: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredVocab.length > 0 ? (
-                filteredVocab.slice(0, listDisplayLimit).map((item) => (
-                  <div key={item.id} className="bg-white p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                filteredVocab.slice(0, listDisplayLimit).map((item) => {
+                  const isBulkSelected = bulkSelectedIds.has(item.id);
+                  return (
+                  <div
+                    key={item.id}
+                    className={`bg-white p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border shadow-sm hover:shadow-md transition-all group relative overflow-hidden cursor-pointer ${isBulkSelected ? 'border-amber-400 ring-2 ring-amber-200' : 'border-slate-100'}`}
+                    onClick={() => {
+                      setBulkSelectedIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                        return next;
+                      });
+                    }}
+                  >
                     <div className="flex justify-between items-start mb-3 sm:mb-4">
                       <div className="flex flex-col">
+                        {isBulkSelected && <span className="text-amber-400 text-lg leading-none mb-1">☑</span>}
                         <h4 className="text-xl sm:text-2xl font-black text-slate-800">{item.word}</h4>
                         {item.wordTypeEn && (
                           <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">({item.wordTypeEn})</span>
@@ -890,7 +924,8 @@ const App: React.FC = () => {
                       </div>
                     )}
                   </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="col-span-full py-16 sm:py-20 text-center space-y-4 animate-in fade-in">
                   <div className="text-5xl sm:text-6xl">🏜️</div>
@@ -907,11 +942,30 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <div className="flex justify-center pt-6 sm:pt-8">
-              <button onClick={() => { setState('selection'); setListDisplayLimit(30); setPendingDeleteId(null); setActiveTagEditId(null); setActiveTagFilter(''); }} className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm">
+            <div className="flex justify-center pt-6 sm:pt-8 pb-4">
+              <button onClick={() => { setState('selection'); setListDisplayLimit(30); setPendingDeleteId(null); setActiveTagEditId(null); setActiveTagFilter(''); setBulkSelectedIds(new Set()); }} className="text-slate-400 font-bold hover:text-slate-600 uppercase tracking-widest text-xs sm:text-sm">
                 {t.backToMenu}
               </button>
             </div>
+
+            {/* Bulk tag action bar */}
+            {bulkSelectedIds.size > 0 && (
+              <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t-2 border-amber-200 px-4 py-3 flex items-center gap-3 shadow-2xl">
+                <span className="text-xs font-black text-amber-600">{bulkSelectedIds.size} {lang === 'tr' ? 'kelime seçildi' : 'words selected'}</span>
+                <button
+                  onClick={() => setShowBulkTagModal(true)}
+                  className="flex-1 py-2 bg-amber-400 hover:bg-amber-500 text-white font-black text-xs rounded-xl transition-all"
+                >
+                  🏷️ {lang === 'tr' ? 'Etiket Ekle' : 'Add Tag'}
+                </button>
+                <button
+                  onClick={() => setBulkSelectedIds(new Set())}
+                  className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-500 font-black text-xs rounded-xl transition-all"
+                >
+                  {lang === 'tr' ? 'İptal' : 'Cancel'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -955,7 +1009,13 @@ const App: React.FC = () => {
             }
           }}
         />}
-        {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} lang={lang} onClose={async (score, total) => { await logActivity('writing', score, total); setState('selection'); }} />}
+        {state === 'writing' && <WordWriting items={shuffleArray(vocabItems)} lang={lang} onClose={async (score, total, wordResults) => {
+          await logActivity('writing', score, total);
+          if (currentUser && wordResults && wordResults.length > 0) {
+            logWordResults(currentUser.id, wordResults);
+          }
+          setState('selection');
+        }} />}
         {state === 'stats' && <Statistics userId={currentUser?.id || ''} vocabItems={vocabItems} onBack={() => setState('selection')} dailyGoal={getTodayGoal(currentUser?.id || '', dailyGoalValue)} lang={lang} />}
         {state === 'tutor' && <TutorView onBack={() => setState('selection')} />}
         {state === 'games' && <GamesHub vocabItems={vocabItems} lang={lang} onBack={() => setState('selection')} />}
@@ -985,6 +1045,56 @@ const App: React.FC = () => {
             </div>
             <button onClick={() => setShowFavoritesModeModal(false)} className="w-full mt-3 py-2 text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">
               {t.favModeCancel}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk tag modal */}
+      {showBulkTagModal && (
+        <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4" onClick={() => setShowBulkTagModal(false)}>
+          <div className="bg-white rounded-[2rem] p-6 max-w-xs w-full shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-black text-slate-800 mb-1 text-center">
+              🏷️ {lang === 'tr' ? 'Toplu Etiket Ekle' : 'Add Bulk Tag'}
+            </h3>
+            <p className="text-xs text-slate-400 font-bold text-center mb-4">
+              {bulkSelectedIds.size} {lang === 'tr' ? 'kelimeye uygulanacak' : 'words will be tagged'}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {PRESET_TAGS.map(pt => (
+                <button
+                  key={pt}
+                  onClick={async () => {
+                    if (!currentUser) return;
+                    await Promise.all([...bulkSelectedIds].map(id => addTagToWord(id, pt)));
+                    setShowBulkTagModal(false);
+                    setBulkSelectedIds(new Set());
+                  }}
+                  className="px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full text-xs font-black hover:bg-indigo-100 transition-colors"
+                >
+                  +{pt}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={bulkTagInput}
+                onChange={e => setBulkTagInput(e.target.value)}
+                onKeyDown={async e => {
+                  if (e.key === 'Enter' && bulkTagInput.trim()) {
+                    await Promise.all([...bulkSelectedIds].map(id => addTagToWord(id, bulkTagInput.trim())));
+                    setBulkTagInput('');
+                    setShowBulkTagModal(false);
+                    setBulkSelectedIds(new Set());
+                  }
+                }}
+                placeholder={lang === 'tr' ? 'Özel etiket (Enter)' : 'Custom tag (Enter)'}
+                className="flex-1 text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:border-indigo-400 outline-none"
+              />
+            </div>
+            <button onClick={() => { setShowBulkTagModal(false); }} className="w-full mt-3 py-2 text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">
+              {lang === 'tr' ? 'İptal' : 'Cancel'}
             </button>
           </div>
         </div>

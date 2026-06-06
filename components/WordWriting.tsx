@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { VocabularyItem } from '../types';
 import { speak } from '../utils/speak';
 
 interface WordWritingProps {
   items: VocabularyItem[];
   lang?: 'tr' | 'en';
-  onClose: (score: number, total: number) => void;
+  onClose: (score: number, total: number, wordResults?: Array<{ wordId: string; correct: number; wrong: number }>) => void;
 }
 
 const T = {
@@ -43,6 +43,8 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, lang = 'tr', onClose }
 
   const t = T[lang];
   const current = items[currentIndex];
+  // Track which words were revealed (wrong) vs solved correctly
+  const revealedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     initWord();
@@ -104,6 +106,7 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, lang = 'tr', onClose }
   const revealAnswer = () => {
     const target = current.word.toUpperCase().replace(/\s/g, '').split('');
     setUserInput(target);
+    revealedRef.current.add(currentIndex);
     setIsCorrect(true);
   };
 
@@ -111,7 +114,12 @@ const WordWriting: React.FC<WordWritingProps> = ({ items, lang = 'tr', onClose }
     if (currentIndex < items.length - 1) {
       setCurrentIndex(i => i + 1);
     } else {
-      onClose(successCount, items.length);
+      const wordResults = items.map((item, idx) => ({
+        wordId: item.id,
+        correct: revealedRef.current.has(idx) ? 0 : 1,
+        wrong:   revealedRef.current.has(idx) ? 1 : 0,
+      }));
+      onClose(successCount, items.length, wordResults);
     }
   };
 
