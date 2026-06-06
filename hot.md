@@ -391,6 +391,86 @@
 
 ---
 
+---
+
+## Güncelleme — 2026-06-06 (7. Oturum — Quiz Düzeltme, Çeviriler, Footer Temizleme, Hesap Ayarları)
+
+### 44. Quiz Popup Overflow Düzeltildi
+- Soru kartı padding'i `p-6 sm:p-10 md:p-14` → `p-4 sm:p-8` olarak azaltıldı.
+- Şık butonları daha kompakt: `p-3 sm:p-4 border-2 rounded-2xl`.
+- Metin alanı overflow: `pr-10 sm:pr-20` (eskiden `pr-16 sm:pr-32`).
+- Sonuç ekranı padding'i de azaltıldı; tüm içerik viewport'a sığıyor.
+- "Sıradaki Soru" sabit bar nedeniyle `pb-24` ile son şık görünür hale getirildi.
+
+### 45. Quiz Otomatik Seslendir (Amerikan İngilizcesi)
+- 🔊 Sesli toggle butonu eklendi (Flashcards'taki gibi).
+- Aktifken: her yeni soruya geçildiğinde soru metni Amerikan İngilizcesiyle 150ms gecikmeli okunuyor.
+- Boşluk yerine "bla bla" okunuyor (eski davranışa dönüldü).
+
+### 46. Quiz Boşluk Okuma "Blank" → "bla bla"
+- `speakQuestion` ve auto-speak ikisi de `replace(/_+/g, 'bla bla')` kullanıyor.
+
+### 47. Çeviri Güncellemeleri (TR)
+- `flashcards`: 'Kelime Kartları', `flashcardsSub`: 'Hızlıca Kelime Öğren'
+- `pool`: 'Kelime Bankası' (Global Kelime Havuzu kartı yeniden adlandırıldı)
+- `tutor`: 'Kelime Antrenörü', `games`: 'Oyunlar'
+- `writingSub`: 'Yazım Pratiği', `homeTitle`: 'Global Kelime Havuzu'
+- EN: `flashcardsSub`: 'Learn Words Fast'
+
+### 48. TutorView Metin Düzeltmeleri
+- Başlık: "Auto Word Trainer" → "Kelime Antrenörü"
+- Alt başlık: "Sana Özel Otomatik Eğitmen" → "Sana Özel Kelime Antrenörü"
+- Not metninin font boyutu `text-[10px] sm:text-xs` → `text-xs sm:text-sm`
+
+### 49. Flashcards Otomatik Seslendir → Amerikan İngilizcesi
+- `speak(current.word, 'en-GB')` → `speak(current.word, 'en-US')`
+
+### 50. Footer Temizlendi
+- "Belki bir kahve ısmarlarsın" metni ve Buy me a coffee butonu footer'dan kaldırıldı.
+- Footer'da yalnızca "DESIGNED BY SUAT TAYFUN TOPAK" küçük yazı kaldı.
+- `max-h-0` yerine `opacity-0 pointer-events-none` kullanıldı → layout jump yok.
+
+### 51. Scroll Jump Düzeltildi
+- Scroll handler'a `currentY <= 10` koşulu eklendi: sayfanın en üstünde header her zaman görünür.
+
+### 52. UserMenu — Hesap Ayarları (E-posta & Şifre Değiştirme)
+- "🔑 Hesap Ayarları" toggle section eklendi.
+- E-posta değiştirme: `supabase.auth.updateUser({ email })` — Supabase onay maili gönderir.
+- Şifre değiştirme: `supabase.auth.updateUser({ password })` — min 6 karakter kontrolü.
+- Başarı/hata mesajı inline gösteriliyor.
+
+### 53. UserMenu — Coffee Butonu (Nefes Animasyonlu)
+- Buy me a coffee butonu user menüye (çıkışın üstüne) taşındı.
+- `animate-breathe` sınıfı: `@keyframes breathe` ile scale 1→1.04 + glow efekti, 2.5s döngü.
+- index.html style bloğuna `@keyframes breathe` ve `.animate-breathe` CSS eklendi.
+
+### 54. MatchGame Dark Mode Düzeltildi
+- Açık kart: `dark:bg-slate-700 dark:border-slate-600` — görünür arka plan.
+- Çevrilmiş kart: `dark:bg-indigo-900/40 dark:border-indigo-700 dark:text-white` — beyaz metin.
+- Kart font boyutu: `text-[10px] sm:text-sm` → `text-xs sm:text-base`
+
+### 55. Statistics Supabase Schema Cache Hatası Düzeltildi
+- Hata tespiti: `'schema cache'` ve `'could not find'` içeren mesajlar da `table_missing` olarak tanınıyor.
+- 🔄 **Tekrar Dene** butonu eklendi — SQL çalıştırdıktan sonra sayfayı yenilemeden tekrar deneyebilirsiniz.
+
+---
+
+## Güncellenen Dosyalar (7. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `utils/i18n.ts` | GÜNCELLENDİ — 7 çeviri anahtarı güncellendi |
+| `components/TutorView.tsx` | GÜNCELLENDİ — başlık, altyazı, not font boyutu |
+| `App.tsx` | GÜNCELLENDİ — footer basitleştirildi, scroll jump fix |
+| `components/UserMenu.tsx` | GÜNCELLENDİ — hesap ayarları, coffee butonu breathe animasyon |
+| `components/Quiz.tsx` | GÜNCELLENDİ — kompakt layout, bla bla, auto-speak toggle |
+| `components/Flashcards.tsx` | GÜNCELLENDİ — auto-speak varsayılan en-US |
+| `components/GamesHub.tsx` | GÜNCELLENDİ — MatchGame dark mode kart metni |
+| `components/Statistics.tsx` | GÜNCELLENDİ — schema cache hata tespiti + Tekrar Dene butonu |
+| `index.html` | GÜNCELLENDİ — @keyframes breathe animasyonu |
+
+---
+
 ## Önerilen Sonraki Adımlar
 
 1. **Supabase kurulumu:** `supabase/schema.sql` dosyasını Supabase SQL Editörü'nde bir kez çalıştır — `user_activities`, `user_favorites`, `user_word_tags` tabloları oluşur.
