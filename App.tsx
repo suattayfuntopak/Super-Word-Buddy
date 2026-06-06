@@ -25,6 +25,7 @@ import TutorView from './components/TutorView';
 import GamesHub from './components/GamesHub';
 import UserMenu from './components/UserMenu';
 import StudyFilterModal from './components/StudyFilterModal';
+import { drainOfflineQueue } from './utils/offlineSync';
 
 const PERSISTABLE_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
 const HISTORY_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
@@ -158,6 +159,19 @@ const App: React.FC = () => {
     navigator.serviceWorker.addEventListener('message', handler);
     return () => navigator.serviceWorker.removeEventListener('message', handler);
   }, []);
+
+  // Drain offline queue when returning online
+  useEffect(() => {
+    if (!currentUser) return;
+    const handleOnline = () => {
+      drainOfflineQueue(currentUser.id);
+    };
+    window.addEventListener('online', handleOnline);
+    if (navigator.onLine) {
+      drainOfflineQueue(currentUser.id);
+    }
+    return () => window.removeEventListener('online', handleOnline);
+  }, [currentUser?.id]);
 
   // Daily reminder check — runs every minute when app is open
   useEffect(() => {

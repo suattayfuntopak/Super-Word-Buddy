@@ -182,7 +182,43 @@ CREATE TABLE IF NOT EXISTS user_study_filters (
 );
 ALTER TABLE user_study_filters ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own study filters" ON user_study_filters
-  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);`;
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  email TEXT,
+  avatar_url TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public profiles readable by everyone" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Users manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
+
+CREATE OR REPLACE FUNCTION public.handle_new_user() RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, email, avatar_url)
+  VALUES (new.id, coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)), new.email, new.raw_user_meta_data->>'avatar_url')
+  ON CONFLICT (id) DO UPDATE SET name = excluded.name, email = excluded.email, avatar_url = excluded.avatar_url, updated_at = NOW();
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+CREATE OR REPLACE FUNCTION public.handle_user_update() RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, email, avatar_url)
+  VALUES (new.id, coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)), new.email, new.raw_user_meta_data->>'avatar_url')
+  ON CONFLICT (id) DO UPDATE SET name = excluded.name, email = excluded.email, avatar_url = excluded.avatar_url, updated_at = NOW();
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
+CREATE TRIGGER on_auth_user_updated AFTER UPDATE ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_user_update();
+
+INSERT INTO public.profiles (id, name, email, avatar_url)
+SELECT id, coalesce(raw_user_meta_data->>'name', split_part(email, '@', 1)), email, raw_user_meta_data->>'avatar_url' FROM auth.users ON CONFLICT (id) DO NOTHING;`;
 
 const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dailyGoal = 3, lang = 'tr' }) => {
   const [loading, setLoading] = useState(true);
@@ -250,7 +286,7 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
         .limit(10);
       if (wsData) setDbWordStats(wsData);
 
-      // Leaderboard: count words per user_id (anonymous display)
+      // Leaderboard: count words per user_id and fetch their display names from profiles
       try {
         const { data: lbData } = await supabase
           .from('vocabulary')
@@ -261,19 +297,39 @@ const Statistics: React.FC<StatisticsProps> = ({ userId, vocabItems, onBack, dai
           lbData.forEach((row: any) => {
             if (row.user_id) counts[row.user_id] = (counts[row.user_id] || 0) + 1;
           });
+          const sortedUserIds = Object.keys(counts);
+
+          let profilesMap: Record<string, string> = {};
+          if (sortedUserIds.length > 0) {
+            const { data: profData } = await supabase
+              .from('profiles')
+              .select('id, name')
+              .in('id', sortedUserIds);
+            if (profData) {
+              profData.forEach((p: any) => {
+                profilesMap[p.id] = p.name;
+              });
+            }
+          }
+
           const sorted = Object.entries(counts)
             .sort(([, a], [, b]) => b - a)
             .slice(0, 10)
-            .map(([uid, cnt]) => ({
-              user_id: uid,
-              word_count: cnt,
-              name: uid === userId
-                ? (lang === 'tr' ? 'Sen' : 'You')
-                : `#${uid.slice(0, 6)}`
-            }));
+            .map(([uid, cnt]) => {
+              const displayName = profilesMap[uid] || `#${uid.slice(0, 6)}`;
+              return {
+                user_id: uid,
+                word_count: cnt,
+                name: uid === userId
+                  ? `${displayName} (${lang === 'tr' ? 'Sen' : 'You'})`
+                  : displayName
+              };
+            });
           setLeaderboard(sorted);
         }
-      } catch { /* leaderboard is best-effort */ }
+      } catch (e) {
+        console.error('Error loading leaderboard:', e);
+      }
     } catch (err: any) {
       setFetchError({ type: 'unknown', message: err?.message || String(err) });
       console.error('İstatistikler getirilirken hata:', err);

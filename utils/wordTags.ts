@@ -1,4 +1,5 @@
 import { supabase } from '../services/supabaseClient';
+import { queueOfflineOp } from './offlineSync';
 
 const storageKey = (userId: string) => `swb_tags_${userId}`;
 
@@ -46,16 +47,35 @@ export const loadTagsFromDB = async (userId: string): Promise<Record<string, str
 // Update localStorage immediately (optimistic), then sync to Supabase
 export const setWordTagsDB = async (userId: string, wordId: string, tags: string[]): Promise<void> => {
   setWordTags(userId, wordId, tags); // sync localStorage first
+
+  if (!navigator.onLine) {
+    queueOfflineOp(userId, {
+      type: 'tag',
+      action: 'set',
+      wordId,
+      value: tags
+    });
+    return;
+  }
+
   try {
+    let result;
     if (tags.length === 0) {
-      await supabase.from('user_word_tags').delete().eq('user_id', userId).eq('word_id', wordId);
+      result = await supabase.from('user_word_tags').delete().eq('user_id', userId).eq('word_id', wordId);
     } else {
-      await supabase.from('user_word_tags').upsert(
+      result = await supabase.from('user_word_tags').upsert(
         { user_id: userId, word_id: wordId, tags, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,word_id' }
       );
     }
+    if (result.error) throw result.error;
   } catch (e) {
-    console.error('Tags Supabase sync failed:', e);
+    console.error('Tags Supabase sync failed, queuing offline:', e);
+    queueOfflineOp(userId, {
+      type: 'tag',
+      action: 'set',
+      wordId,
+      value: tags
+    });
   }
 };

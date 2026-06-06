@@ -168,7 +168,92 @@ CREATE POLICY "Users manage own study filters"
   WITH CHECK (auth.uid() = user_id);
 
 -- ============================================================
+-- 8. PUBLIC PROFILES (for user names on leaderboard)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  email       TEXT,
+  avatar_url  TEXT,
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public profiles are readable by everyone" ON public.profiles;
+CREATE POLICY "Public profiles are readable by everyone"
+  ON public.profiles FOR SELECT TO public
+  USING (true);
+
+DROP POLICY IF EXISTS "Users can manage their own profile" ON public.profiles;
+CREATE POLICY "Users can manage their own profile"
+  ON public.profiles FOR ALL TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- Trigger: Sync profile on user creation
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, email, avatar_url)
+  VALUES (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    new.email,
+    new.raw_user_meta_data->>'avatar_url'
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    name = excluded.name,
+    email = excluded.email,
+    avatar_url = excluded.avatar_url,
+    updated_at = NOW();
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Trigger: Sync profile on user updates (e.g. metadata updates)
+CREATE OR REPLACE FUNCTION public.handle_user_update()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, email, avatar_url)
+  VALUES (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    new.email,
+    new.raw_user_meta_data->>'avatar_url'
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    name = excluded.name,
+    email = excluded.email,
+    avatar_url = excluded.avatar_url,
+    updated_at = NOW();
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
+CREATE TRIGGER on_auth_user_updated
+  AFTER UPDATE ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_user_update();
+
+-- Seed existing users to profiles table (run once)
+INSERT INTO public.profiles (id, name, email, avatar_url)
+SELECT
+  id,
+  coalesce(raw_user_meta_data->>'name', split_part(email, '@', 1)),
+  email,
+  raw_user_meta_data->>'avatar_url'
+FROM auth.users
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
 -- Refresh PostgREST schema cache (run after any table/policy change)
 -- ============================================================
 NOTIFY pgrst, 'reload schema';
+
 

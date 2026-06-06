@@ -827,12 +827,41 @@
 
 ---
 
+## Güncelleme — 2026-06-06 (16. Oturum — Leaderboard İsimleri & Çevrimdışı Sync)
+
+### 83. Katkıcı İsimleri (Leaderboard Name Sync)
+- **Sorun:** Katkıcı listesindeki kullanıcılar sadece hash ID (`#abc123`) olarak listeleniyordu, bu da topluluk etkileşimini sınırlıyordu.
+- **Çözüm:** Public `profiles` tablosu oluşturuldu. 
+  - `auth.users` üzerinde insert/update işlemlerini dinleyen PostgreSQL triggerları eklendi. Kullanıcı kayıt olduğunda ya da ad/soyad/avatar güncellediğinde, bu veriler otomatik olarak `profiles` tablosuna yansır.
+  - İstatistikler sayfasındaki Leaderboard sorgusu güncellendi; kullanıcıların display_name'leri çekilerek isimler gösterildi. Tablo bulunmaması durumuna karşı hata korumalı fallback (#hash) yapısı korundu.
+
+### 84. Çevrimdışı Kuyruklama (Offline Sync Queue)
+- **Sorun:** Cihaz internete bağlı değilken veya sunucu hatası alındığında yapılan Favori (❤️) veya Etiket (🏷️) değişiklikleri Supabase'e yansıtılamıyor ve kaybolabiliyordu.
+- **Çözüm:** `localStorage` tabanlı `swb_offline_queue` kuyruk mekanizması kuruldu.
+  - Cihaz çevrimdışıyken yapılan tüm ekleme/çıkarma aksiyonları sıraya alınır.
+  - Uygulama açılışında veya tarayıcının `online` event listener'ı tetiklendiğinde, arka planda birikmiş tüm istekler Supabase'e sırayla gönderilerek senkronize edilir.
+
+---
+
+## Güncellenen / Eklenen Dosyalar (16. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `utils/offlineSync.ts` | YENİ — favori ve etiket çevrimdışı kuyruk yönetim utility |
+| `supabase/schema.sql` | GÜNCELLENDİ — profiles tablosu, trigger fonksiyonları, auth.users trigger tetikleyicileri eklendi |
+| `components/Statistics.tsx` | GÜNCELLENDİ — `SETUP_SQL` profiles tablosuyla genişletildi; leaderboard query profiles join ile güncellendi |
+| `utils/favorites.ts` | GÜNCELLENDİ — `toggleFavoriteDB` çevrimdışı kontrol ve queue entegrasyonu yapıldı |
+| `utils/wordTags.ts` | GÜNCELLENDİ — `setWordTagsDB` çevrimdışı kontrol ve queue entegrasyonu yapıldı |
+| `App.tsx` | GÜNCELLENDİ — `online` event listener ve otomatik `drainOfflineQueue` çağrısı entegre edildi |
+
+---
+
 ## Önerilen Sonraki Adımlar (Güncel)
 
-1. **schema.sql yeniden çalıştır:** `user_study_filters` tablosu ve politikaları için güncellenmiş `schema.sql`'i Supabase SQL Editörü'nde çalıştırın.
-2. **Kullanıcı adı Leaderboard'da:** `auth.users` tablosundan display_name/email prefix çekilirse katkıcılar daha anlamlı görünür (RLS izniyle).
-3. **CSV + Aktivite Logları:** Aktivite geçmişi (tip, tarih, skor) da CSV'ye dahil edilebilir.
-4. **Toplu silme:** Bulk seçim moduna silme aksiyonu da eklenebilir (ownership kontrolü ile).
-5. **SW PeriodicSync:** Chromium'da `periodicsync` API ile uygulama kapalıyken de zamanlanmış bildirim mümkün.
-6. **DB → localStorage spaced repetition sync:** Quiz'de `user_word_stats` verisi `wordDifficulty` localStorage'ına da yansıtılırsa çapraz cihaz spaced repetition sağlanır.
+1. **schema.sql yeniden çalıştır:** `profiles` tablosu, triggerlar ve `user_study_filters` tablosu için güncellenmiş `schema.sql`'i Supabase SQL Editörü'de çalıştırın.
+2. **CSV + Aktivite Logları:** Aktivite geçmişi (tip, tarih, skor) da CSV'ye dahil edilebilir.
+3. **Toplu silme:** Bulk seçim moduna silme aksiyonu da eklenebilir (ownership kontrolü ile).
+4. **SW PeriodicSync:** Chromium'da `periodicsync` API ile uygulama kapalıyken de zamanlanmış bildirim mümkün.
+5. **DB → localStorage spaced repetition sync:** Quiz'de `user_word_stats` verisi `wordDifficulty` localStorage'ına da yansıtılırsa çapraz cihaz spaced repetition sağlanır.
+
 

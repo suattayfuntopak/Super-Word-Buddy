@@ -1,5 +1,5 @@
-
 import { supabase } from '../services/supabaseClient';
+import { queueOfflineOp } from './offlineSync';
 
 const storageKey = (userId: string) => `swb_favorites_${userId}`;
 
@@ -69,14 +69,31 @@ export const loadFavoritesFromDB = async (userId: string): Promise<Set<string>> 
 // Toggle in localStorage immediately (optimistic), then sync to Supabase
 export const toggleFavoriteDB = async (userId: string, wordId: string): Promise<boolean> => {
   const newState = toggleFavorite(userId, wordId); // sync localStorage first
+
+  if (!navigator.onLine) {
+    queueOfflineOp(userId, {
+      type: 'favorite',
+      action: newState ? 'add' : 'remove',
+      wordId
+    });
+    return newState;
+  }
+
   try {
+    let result;
     if (newState) {
-      await supabase.from('user_favorites').insert({ user_id: userId, word_id: wordId });
+      result = await supabase.from('user_favorites').upsert({ user_id: userId, word_id: wordId }, { onConflict: 'user_id,word_id', ignoreDuplicates: true });
     } else {
-      await supabase.from('user_favorites').delete().eq('user_id', userId).eq('word_id', wordId);
+      result = await supabase.from('user_favorites').delete().eq('user_id', userId).eq('word_id', wordId);
     }
+    if (result.error) throw result.error;
   } catch (e) {
-    console.error('Favorites Supabase sync failed:', e);
+    console.error('Favorites Supabase sync failed, queuing offline:', e);
+    queueOfflineOp(userId, {
+      type: 'favorite',
+      action: newState ? 'add' : 'remove',
+      wordId
+    });
   }
   return newState;
 };
