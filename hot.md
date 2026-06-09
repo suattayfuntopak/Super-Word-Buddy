@@ -920,13 +920,18 @@
   - Bu metin alanlarına `dark:text-indigo-300` sınıfı tanımlandı.
   - Açık renkli (light) temadaki özgün renklere (indigo-500 ve indigo-600) dokunulmadan, yalnızca koyu (dark) temada metinlerin parlaklığı ve okunabilirliği artırıldı.
 
+### 93. Arayüz Hizalama ve Boşluk Düzenlemeleri
+- Seçim ızgarasındaki en alttaki üç kutu ile manuel kelime ekle butonu arasındaki yatay çizgi (`border-t`) kaldırıldı.
+- Diğer kutular arasındaki dikey boşlukla (`gap-6`) uyumlu olması adına manuel kelime ekle alanının üst boşluğu `pt-6` olarak güncellendi.
+- Mobilde "+ Manuel Kelime Ekle" butonu ile alt bilgi (footer) alanının yapışık görünmesini engellemek için ana taşıyıcı `<main>` tag'inin alt dolgusu `pb-0`'dan `pb-6 sm:pb-8` düzeyine yükseltilerek nefes alan, premium bir görünüm sağlandı.
+
 ---
 
 ## Güncellenen / Eklenen Dosyalar (18. Oturum)
 
 | Dosya | İşlem |
 |-------|-------|
-| `App.tsx` | GÜNCELLENDİ — Kart renkleri, close buton yönlendirmeleri, çoklu seçim ve UserMenu prop temizlikleri, header koyu tema metin rengi iyileştirmesi |
+| `App.tsx` | GÜNCELLENDİ — Kart renkleri, close buton yönlendirmeleri, çoklu seçim ve UserMenu prop temizlikleri, header koyu tema metin rengi, alt çizgi kaldırma ve dikey boşluk iyileştirmesi |
 | `components/UserMenu.tsx` | GÜNCELLENDİ — Günlük hedef, hatırlatıcı ve haftalık plan modüllerinin kaldırılması |
 | `components/Quiz.tsx` | GÜNCELLENDİ — onCancel prop entegrasyonu ve sağ üst köşe kapat butonu |
 | `components/Flashcards.tsx` | GÜNCELLENDİ — onCancel prop entegrasyonu ve sağ üst köşe kapat butonu |

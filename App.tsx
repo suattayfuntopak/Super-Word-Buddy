@@ -674,7 +674,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 pt-2 sm:pt-4 pb-0">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 pt-2 sm:pt-4 pb-6 sm:pb-8">
         {error && (
           <div className="mb-8 p-6 bg-red-50 border-2 border-red-100 text-red-600 rounded-[2rem] text-center font-bold animate-in slide-in-from-top-4 duration-300 shadow-lg shadow-red-50">
             <div className="flex items-center justify-center space-x-3">
@@ -843,7 +843,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-col items-center pt-4 border-t border-slate-100">
+            <div className="flex flex-col items-center pt-6">
               <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-violet-50 border-2 border-violet-100 px-10 py-3 rounded-2xl font-black text-violet-500 hover:border-violet-400 hover:text-violet-700 hover:bg-violet-100 transition-all shadow-sm">
                 {t.addWordBtn}
               </button>
