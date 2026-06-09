@@ -886,5 +886,41 @@
 4. **SW PeriodicSync:** Chromium'da `periodicsync` API ile uygulama kapalıyken de zamanlanmış bildirim mümkün.
 5. **DB → localStorage spaced repetition sync:** Quiz'de `user_word_stats` verisi `wordDifficulty` localStorage'ına da yansıtılırsa çapraz cihaz spaced repetition sağlanır.
 
+---
+
+## Güncelleme — 2026-06-09 (18. Oturum — Arayüz Renk İyileştirmeleri, UserMenu Sadeleştirme ve Close Butonları)
+
+### 87. Kart Renklerinin İyileştirilmesi
+- Alt satırda yer alan son kartların renklerinin birbirine çok yakın olması (pembe, mor, fuchsia) nedeniyle oluşan görsel benzerliği gidermek için:
+  - **Akıllı Filtreler** kartının rengi, **Yazma Kampı** kartının rengiyle aynı yeşil/turkuaz gradyana (`bg-gradient-to-br from-emerald-400 to-teal-500`) dönüştürüldü.
+  - **İstatistikler** kartının rengi, **Kelime Kartları** kartının rengiyle aynı mavi/açık mavi gradyana (`bg-gradient-to-br from-blue-400 to-cyan-500`) dönüştürüldü.
+
+### 88. Kullanıcı Menüsü (UserMenu) Temizliği
+- Kullanıcı menüsündeki gereksiz modüller temizlendi:
+  - **Günlük Hedef** (Daily Goal) ayarları kaldırıldı.
+  - **Günlük Hatırlatıcı** (Daily Reminder) ayarları kaldırıldı.
+  - **Haftalık Plan** (Weekly Plan) takvimi kaldırıldı.
+- Menü kodundan bu özelliklerle ilgili tüm prop'lar, state'ler, effect'ler, yardımcı fonksiyonlar ve arayüz elemanları tamamen temizlendi ("kırıntıları dahi kalmadı").
+
+### 89. Kelime Bankası Kapat (✕) Butonu ve Çoklu Seçim Temizliği
+- Kelime Bankası (Kelime Listesi) sayfasındaki işlevi belirsiz olan ok tikli Çoklu Seçim (Multi-select) butonu kaldırıldı.
+- Yerine basıldığında Kelime Bankası'nı kapatıp doğrudan ana/seçim sayfasına dönmeyi sağlayan şık bir **çarpı (✕)** butonu eklendi.
+- Çoklu seçim mekanizması (`bulkSelectedIds` state'i, kartların seçildiğinde turuncu kenarlık alması, alttaki toplu etiketleme modalı/barı) tamamen temizlendi.
+
+### 90. Kendini Test Et (Quiz) Kapat (✕) Butonu
+- Kendini Test Et (Quiz) ekranının sağ üst köşesine (skor alanının yanına) testten erken çıkmayı sağlayan bir **çarpı (✕)** butonu eklendi.
+- Kullanıcı bu butona bastığında quiz yarıda kesilerek her hangi bir ilerleme kaydedilmeden doğrudan ana menüye dönebilir.
+
+---
+
+## Güncellenen / Eklenen Dosyalar (18. Oturum)
+
+| Dosya | İşlem |
+|-------|-------|
+| `App.tsx` | GÜNCELLENDİ — Kart renkleri, close buton yönlendirmeleri, çoklu seçim ve UserMenu prop temizlikleri |
+| `components/UserMenu.tsx` | GÜNCELLENDİ — Günlük hedef, hatırlatıcı ve haftalık plan modüllerinin kaldırılması |
+| `components/Quiz.tsx` | GÜNCELLENDİ — onCancel prop entegrasyonu ve sağ üst köşe kapat butonu |
+| `hot.md` | GÜNCELLENDİ — 18. Oturum değişiklikleri eklendi |
+
 
 

@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Theme } from '../utils/theme';
 import { Lang } from '../utils/i18n';
-import { requestNotificationPermission, getReminderTime, setReminderTime } from '../utils/dailyGoal';
 import { Accent, getAccent, setAccent } from '../utils/speak';
 import { supabase } from '../services/supabaseClient';
-import { WeeklySchedule, getWeeklySchedule, setWeeklySchedule } from '../utils/weeklySchedule';
 
 interface UserMenuProps {
   userName: string;
@@ -13,17 +11,15 @@ interface UserMenuProps {
   avatarUrl?: string;
   theme: Theme;
   lang: Lang;
-  dailyGoal: number;
   onThemeChange: (t: Theme) => void;
   onLangChange: (l: Lang) => void;
-  onDailyGoalChange: (n: number) => void;
   onAvatarChange?: (url: string) => void;
   onLogout: () => void;
 }
 
 const UserMenu: React.FC<UserMenuProps> = ({
-  userName, userEmail, userId, avatarUrl, theme, lang, dailyGoal,
-  onThemeChange, onLangChange, onDailyGoalChange, onAvatarChange, onLogout,
+  userName, userEmail, userId, avatarUrl, theme, lang,
+  onThemeChange, onLangChange, onAvatarChange, onLogout,
 }) => {
   const [open, setOpen] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
@@ -32,36 +28,11 @@ const UserMenu: React.FC<UserMenuProps> = ({
   const [accountMsg, setAccountMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [localAvatarUrl, setLocalAvatarUrl] = useState(avatarUrl);
-  const [showSchedule, setShowSchedule] = useState(false);
-  const [schedule, setSchedule] = useState<WeeklySchedule>({});
   const [accent, setAccentState] = useState<Accent>(getAccent);
-  const [reminderTime, setReminderTimeState] = useState<{ hour: number; minute: number } | null>(getReminderTime);
-  const [reminderHourInput, setReminderHourInput] = useState(() => {
-    const rt = getReminderTime();
-    return rt ? String(rt.hour).padStart(2, '0') : '08';
-  });
-  const [reminderMinInput, setReminderMinInput] = useState(() => {
-    const rt = getReminderTime();
-    return rt ? String(rt.minute).padStart(2, '0') : '00';
-  });
   const ref = useRef<HTMLDivElement>(null);
   const isTr = lang === 'tr';
 
-  useEffect(() => {
-    if (userId) setSchedule(getWeeklySchedule(userId));
-  }, [userId]);
 
-  const updateSchedule = (dayIndex: number, value: number) => {
-    const updated = { ...schedule, [dayIndex]: value };
-    setSchedule(updated);
-    setWeeklySchedule(userId, updated);
-  };
-
-  const DAY_LABELS = isTr
-    ? ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
-    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const todayIdx = new Date().getDay();
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,28 +81,11 @@ const UserMenu: React.FC<UserMenuProps> = ({
     { value: 'system', icon: '💻', labelTr: 'Sistem', labelEn: 'System' },
   ];
 
-  const handleGoalChange = async (n: number) => {
-    if (n > 0) await requestNotificationPermission();
-    onDailyGoalChange(n);
-  };
+
 
   const handleAccentChange = (a: Accent) => {
     setAccent(a);
     setAccentState(a);
-  };
-
-  const handleReminderSave = async () => {
-    const h = parseInt(reminderHourInput, 10);
-    const m = parseInt(reminderMinInput, 10);
-    if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return;
-    await requestNotificationPermission();
-    setReminderTime(h, m);
-    setReminderTimeState({ hour: h, minute: m });
-  };
-
-  const handleReminderClear = () => {
-    setReminderTime(null, 0);
-    setReminderTimeState(null);
   };
 
   const handleEmailChange = async () => {
@@ -258,126 +212,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
               </div>
             </div>
 
-            {/* Daily Goal */}
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                {isTr ? 'Günlük Hedef' : 'Daily Goal'}
-              </p>
-              <div className="flex items-center space-x-3 bg-slate-50 rounded-xl p-2 border border-slate-100">
-                <button
-                  onClick={() => handleGoalChange(Math.max(1, dailyGoal - 1))}
-                  className="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-600 font-black flex items-center justify-center border border-slate-100 shadow-sm transition-all"
-                >−</button>
-                <div className="flex-1 text-center">
-                  <span className="text-xl font-black text-slate-800">{dailyGoal}</span>
-                  <span className="text-[10px] text-slate-400 font-bold ml-1.5">
-                    {isTr ? 'aktivite/gün' : 'activities/day'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleGoalChange(Math.min(20, dailyGoal + 1))}
-                  className="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-600 font-black flex items-center justify-center border border-slate-100 shadow-sm transition-all"
-                >+</button>
-              </div>
-            </div>
 
-            {/* Reminder */}
-            <div className="border-t border-slate-100 pt-3">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                ⏰ {isTr ? 'Günlük Hatırlatıcı' : 'Daily Reminder'}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min={0} max={23}
-                  value={reminderHourInput}
-                  onChange={e => setReminderHourInput(e.target.value.padStart(2, '0').slice(-2))}
-                  className="w-12 text-center text-xs font-black px-1 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:border-indigo-400 outline-none"
-                  placeholder="HH"
-                />
-                <span className="font-black text-slate-400">:</span>
-                <input
-                  type="number"
-                  min={0} max={59}
-                  value={reminderMinInput}
-                  onChange={e => setReminderMinInput(e.target.value.padStart(2, '0').slice(-2))}
-                  className="w-12 text-center text-xs font-black px-1 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:border-indigo-400 outline-none"
-                  placeholder="MM"
-                />
-                <button
-                  onClick={handleReminderSave}
-                  className="flex-1 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-black text-[10px] rounded-xl transition-all uppercase tracking-wide"
-                >
-                  {isTr ? 'Kaydet' : 'Save'}
-                </button>
-                {reminderTime && (
-                  <button
-                    onClick={handleReminderClear}
-                    className="py-1.5 px-2 bg-red-50 hover:bg-red-100 text-red-400 font-black text-[10px] rounded-xl transition-all"
-                    title={isTr ? 'Hatırlatıcıyı Kapat' : 'Disable Reminder'}
-                  >✕</button>
-                )}
-              </div>
-              {reminderTime && (
-                <p className="text-[9px] text-emerald-500 font-bold mt-1">
-                  ✓ {reminderTime.hour.toString().padStart(2,'0')}:{reminderTime.minute.toString().padStart(2,'0')} {isTr ? 'aktif' : 'active'}
-                </p>
-              )}
-            </div>
-
-            {/* Weekly Schedule */}
-            <div className="border-t border-slate-100 pt-3">
-              <button
-                onClick={() => setShowSchedule(v => !v)}
-                className="w-full flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors py-1"
-              >
-                <span>📅 {isTr ? 'Haftalık Plan' : 'Weekly Plan'}</span>
-                <span className="text-slate-300">{showSchedule ? '▲' : '▼'}</span>
-              </button>
-              {showSchedule && (
-                <div className="mt-2 space-y-2">
-                  <p className="text-[9px] text-slate-400 font-bold">
-                    {isTr
-                      ? 'Güne özel hedef. Tıkla: 0 (dinlenme) → 1 → 2 → ... → 5'
-                      : 'Per-day goal. Tap: 0 (rest) → 1 → 2 → ... → 5'}
-                  </p>
-                  <div className="grid grid-cols-7 gap-1">
-                    {DAY_LABELS.map((label, idx) => {
-                      const val = schedule[idx] !== undefined ? schedule[idx]! : -1;
-                      const isToday = idx === todayIdx;
-                      const isRest = val === 0;
-                      const display = val === -1 ? '·' : val === 0 ? '💤' : String(val);
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            const cur = schedule[idx] !== undefined ? schedule[idx]! : 0;
-                            updateSchedule(idx, cur >= 5 ? 0 : cur + 1);
-                          }}
-                          className={`flex flex-col items-center py-1.5 rounded-xl border text-center transition-all ${
-                            isToday
-                              ? 'border-indigo-400 bg-indigo-50'
-                              : isRest
-                              ? 'border-slate-100 bg-slate-50 opacity-50'
-                              : val === -1
-                              ? 'border-slate-100 bg-slate-50'
-                              : 'border-emerald-200 bg-emerald-50'
-                          }`}
-                        >
-                          <span className={`text-[8px] font-black ${isToday ? 'text-indigo-600' : 'text-slate-400'}`}>{label}</span>
-                          <span className={`text-sm font-black mt-0.5 leading-none ${isRest ? 'text-slate-300' : isToday ? 'text-indigo-700' : 'text-emerald-700'}`}>
-                            {display}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-[9px] text-slate-400 font-medium text-center">
-                    {isTr ? '· = global hedefe bağlı' : '· = follows global goal'}
-                  </p>
-                </div>
-              )}
-            </div>
 
             {/* Account settings */}
             <div className="border-t border-slate-100 pt-3">

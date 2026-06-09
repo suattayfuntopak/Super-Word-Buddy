@@ -8,6 +8,7 @@ interface QuizProps {
   lang?: 'tr' | 'en';
   onClose: (score: number, total: number, wrongWordStrings: string[]) => void;
   onPracticeWrong?: (score: number, total: number, wrongWordStrings: string[]) => void;
+  onCancel?: () => void;
 }
 
 const T = {
@@ -55,7 +56,7 @@ const T = {
   },
 };
 
-const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose, onPracticeWrong }) => {
+const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose, onPracticeWrong, onCancel }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
@@ -227,6 +228,13 @@ const Quiz: React.FC<QuizProps> = ({ questions, lang = 'tr', onClose, onPractice
             <span className="text-sm sm:text-base">💎</span>
             <span className="text-xs sm:text-sm text-yellow-600 font-black">{t.score}: {score * 10}</span>
           </div>
+          <button
+            onClick={onCancel || (() => onClose(0, 0, []))}
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors shadow-sm font-black text-sm"
+            title={lang === 'tr' ? 'Kapat' : 'Close'}
+          >
+            ✕
+          </button>
         </div>
       </div>
 
