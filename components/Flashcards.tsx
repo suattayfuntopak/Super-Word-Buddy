@@ -7,6 +7,7 @@ interface FlashcardsProps {
   items: VocabularyItem[];
   lang?: 'tr' | 'en';
   onComplete: (totalReviewed: number) => void;
+  onCancel?: () => void;
 }
 
 const T = {
@@ -38,7 +39,7 @@ const T = {
   },
 };
 
-const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete }) => {
+const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete, onCancel }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [autoPronounce, setAutoPronounce] = useState(() => localStorage.getItem('swb_flash_autoSpeak') === 'true');
@@ -93,12 +94,19 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete 
             <span>🔊</span>
             <span className="hidden sm:inline">{t.autoPronounce}</span>
           </button>
-          <div className="h-3 w-32 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+          <div className="h-3 w-32 bg-slate-100 rounded-full overflow-hidden border border-slate-200 shrink-0">
             <div
               className="h-full bg-gradient-to-r from-blue-400 to-indigo-400 transition-all duration-500"
               style={{ width: `${((currentIndex + 1) / items.length) * 100}%` }}
             />
           </div>
+          <button
+            onClick={onCancel || (() => onComplete(0))}
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors shadow-sm font-black text-sm shrink-0"
+            title={lang === 'tr' ? 'Kapat' : 'Close'}
+          >
+            ✕
+          </button>
         </div>
       </div>
 

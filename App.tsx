@@ -1071,6 +1071,7 @@ const App: React.FC = () => {
         {state === 'learning' && <Flashcards
           items={flashcardsItems}
           lang={lang}
+          onCancel={() => setState('selection')}
           onComplete={async (total) => { await logActivity('flashcards', total, total); setState('selection'); }}
         />}
         {state === 'quiz' && <Quiz questions={quizQuestions} lang={lang}

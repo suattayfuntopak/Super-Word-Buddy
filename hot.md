@@ -911,6 +911,10 @@
 - Kendini Test Et (Quiz) ekranının sağ üst köşesine (skor alanının yanına) testten erken çıkmayı sağlayan bir **çarpı (✕)** butonu eklendi.
 - Kullanıcı bu butona bastığında quiz yarıda kesilerek her hangi bir ilerleme kaydedilmeden doğrudan ana menüye dönebilir.
 
+### 91. Kelime Kartları (Flashcards) Kapat (✕) Butonu
+- Kelime Kartları (Flashcards) ekranının sağ üst köşesine (ilerleme çubuğunun yanına) çalışmadan erken çıkmayı sağlayan bir **çarpı (✕)** butonu eklendi.
+- Kullanıcı bu butona bastığında kelime kartı çalışması yarıda kesilerek doğrudan ana menüye dönebilir.
+
 ---
 
 ## Güncellenen / Eklenen Dosyalar (18. Oturum)
@@ -920,6 +924,7 @@
 | `App.tsx` | GÜNCELLENDİ — Kart renkleri, close buton yönlendirmeleri, çoklu seçim ve UserMenu prop temizlikleri |
 | `components/UserMenu.tsx` | GÜNCELLENDİ — Günlük hedef, hatırlatıcı ve haftalık plan modüllerinin kaldırılması |
 | `components/Quiz.tsx` | GÜNCELLENDİ — onCancel prop entegrasyonu ve sağ üst köşe kapat butonu |
+| `components/Flashcards.tsx` | GÜNCELLENDİ — onCancel prop entegrasyonu ve sağ üst köşe kapat butonu |
 | `hot.md` | GÜNCELLENDİ — 18. Oturum değişiklikleri eklendi |
 
 
