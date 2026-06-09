@@ -915,13 +915,18 @@
 - Kelime Kartları (Flashcards) ekranının sağ üst köşesine (ilerleme çubuğunun yanına) çalışmadan erken çıkmayı sağlayan bir **çarpı (✕)** butonu eklendi.
 - Kullanıcı bu butona bastığında kelime kartı çalışması yarıda kesilerek doğrudan ana menüye dönebilir.
 
+### 92. Dark Temada Header Metinlerinin Görünürlüğü Artırıldı
+- Dark temada sol üst köşedeki alt başlık ("GLOBAL KELİME HAVUZU") ve sağ üst köşedeki toplam kelime sayısı ("X Kelime") metinlerinin koyu mor kalması ve okunurluk sorunu yaratması nedeniyle:
+  - Bu metin alanlarına `dark:text-indigo-300` sınıfı tanımlandı.
+  - Açık renkli (light) temadaki özgün renklere (indigo-500 ve indigo-600) dokunulmadan, yalnızca koyu (dark) temada metinlerin parlaklığı ve okunabilirliği artırıldı.
+
 ---
 
 ## Güncellenen / Eklenen Dosyalar (18. Oturum)
 
 | Dosya | İşlem |
 |-------|-------|
-| `App.tsx` | GÜNCELLENDİ — Kart renkleri, close buton yönlendirmeleri, çoklu seçim ve UserMenu prop temizlikleri |
+| `App.tsx` | GÜNCELLENDİ — Kart renkleri, close buton yönlendirmeleri, çoklu seçim ve UserMenu prop temizlikleri, header koyu tema metin rengi iyileştirmesi |
 | `components/UserMenu.tsx` | GÜNCELLENDİ — Günlük hedef, hatırlatıcı ve haftalık plan modüllerinin kaldırılması |
 | `components/Quiz.tsx` | GÜNCELLENDİ — onCancel prop entegrasyonu ve sağ üst köşe kapat butonu |
 | `components/Flashcards.tsx` | GÜNCELLENDİ — onCancel prop entegrasyonu ve sağ üst köşe kapat butonu |

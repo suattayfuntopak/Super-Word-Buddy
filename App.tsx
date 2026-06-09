@@ -626,7 +626,7 @@ const App: React.FC = () => {
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-600 rounded-lg sm:rounded-xl flex items-center justify-center text-white text-lg sm:text-xl shadow-lg">🚀</div>
             <div className="flex flex-col">
               <h1 className="text-base sm:text-xl font-black text-slate-800 leading-none">Super Word Buddy</h1>
-              <span className="text-[8px] sm:text-[10px] font-black text-indigo-500 uppercase tracking-tighter">{t.subtitle}</span>
+              <span className="text-[8px] sm:text-[10px] font-black text-indigo-500 dark:text-indigo-300 uppercase tracking-tighter">{t.subtitle}</span>
             </div>
           </div>
           <nav className="flex items-center space-x-2 sm:space-x-4">
@@ -634,7 +634,7 @@ const App: React.FC = () => {
               <div className="flex items-center space-x-2 sm:space-x-3">
                 <div className="hidden lg:flex flex-col items-end mr-2">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{t.poolLabel}</span>
-                  <span className="text-sm font-black text-indigo-600">{totalPoolCount.toLocaleString('tr-TR')} {t.words}</span>
+                  <span className="text-sm font-black text-indigo-600 dark:text-indigo-300">{totalPoolCount.toLocaleString('tr-TR')} {t.words}</span>
                 </div>
                 <button
                   onClick={() => { setState('selection'); setSearchTerm(''); }}
