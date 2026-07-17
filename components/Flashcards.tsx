@@ -42,7 +42,9 @@ const T = {
 const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete, onCancel }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [autoPronounce, setAutoPronounce] = useState(() => localStorage.getItem('swb_flash_autoSpeak') === 'true');
+  const [autoPronounce, setAutoPronounce] = useState(() => {
+    try { return localStorage.getItem('swb_flash_autoSpeak') === 'true'; } catch { return false; }
+  });
 
   const t = T[lang];
   const current = items[currentIndex];
@@ -80,6 +82,22 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete,
     return () => window.removeEventListener('keydown', handleKey);
   }, [currentIndex]);
 
+  // Safety guard AFTER all hooks — if items is empty or current item is missing, redirect back
+  if (!items || items.length === 0 || !current) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 space-y-4">
+        <div className="text-5xl">📭</div>
+        <p className="text-slate-400 font-bold">{lang === 'tr' ? 'Kelime bulunamadı.' : 'No words found.'}</p>
+        <button
+          onClick={onCancel || (() => onComplete(0))}
+          className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black shadow-lg"
+        >
+          {lang === 'tr' ? '← Geri Dön' : '← Go Back'}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center space-y-8 w-full max-w-lg mx-auto p-4 animate-in fade-in duration-500">
       <div className="w-full flex justify-between items-center px-4">
@@ -87,7 +105,7 @@ const Flashcards: React.FC<FlashcardsProps> = ({ items, lang = 'tr', onComplete,
         <div className="flex items-center space-x-3">
           {/* Auto-pronounce toggle */}
           <button
-            onClick={() => setAutoPronounce(v => { const next = !v; localStorage.setItem('swb_flash_autoSpeak', String(next)); return next; })}
+            onClick={() => setAutoPronounce(v => { const next = !v; try { localStorage.setItem('swb_flash_autoSpeak', String(next)); } catch {} return next; })}
             className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black transition-all border ${autoPronounce ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-400 hover:border-indigo-300'}`}
             title={t.autoPronounce}
           >

@@ -1,10 +1,16 @@
 import type { Lang } from './i18n';
 
-export const getDailyGoal = (): number =>
-  parseInt(localStorage.getItem('swb_daily_goal') ?? '3', 10);
+export const getDailyGoal = (): number => {
+  try {
+    return parseInt(localStorage.getItem('swb_daily_goal') ?? '3', 10);
+  } catch {
+    return 3;
+  }
+};
 
-export const setDailyGoal = (n: number): void =>
-  localStorage.setItem('swb_daily_goal', String(Math.max(1, Math.min(20, n))));
+export const setDailyGoal = (n: number): void => {
+  try { localStorage.setItem('swb_daily_goal', String(Math.max(1, Math.min(20, n)))); } catch { /* ignore */ }
+};
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!('Notification' in window)) return false;
@@ -61,10 +67,14 @@ const REMINDER_HOUR_KEY  = 'swb_reminder_hour';   // '0'–'23' or '' (disabled)
 const REMINDER_MIN_KEY   = 'swb_reminder_min';    // '0'–'59'
 
 export const getReminderTime = (): { hour: number; minute: number } | null => {
-  const h = localStorage.getItem(REMINDER_HOUR_KEY);
-  const m = localStorage.getItem(REMINDER_MIN_KEY);
-  if (h === null || h === '') return null;
-  return { hour: parseInt(h, 10), minute: parseInt(m ?? '0', 10) };
+  try {
+    const h = localStorage.getItem(REMINDER_HOUR_KEY);
+    const m = localStorage.getItem(REMINDER_MIN_KEY);
+    if (h === null || h === '') return null;
+    return { hour: parseInt(h, 10), minute: parseInt(m ?? '0', 10) };
+  } catch {
+    return null;
+  }
 };
 
 export const setReminderTime = (hour: number | null, minute: number): void => {

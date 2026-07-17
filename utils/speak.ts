@@ -3,11 +3,17 @@ export type Accent = 'en-GB' | 'en-US';
 
 const ACCENT_KEY = 'swb_accent';
 
-export const getAccent = (): Accent =>
-  (localStorage.getItem(ACCENT_KEY) as Accent) ?? 'en-US';
+export const getAccent = (): Accent => {
+  try {
+    return (localStorage.getItem(ACCENT_KEY) as Accent) ?? 'en-US';
+  } catch {
+    return 'en-US';
+  }
+};
 
-export const setAccent = (accent: Accent): void =>
-  localStorage.setItem(ACCENT_KEY, accent);
+export const setAccent = (accent: Accent): void => {
+  try { localStorage.setItem(ACCENT_KEY, accent); } catch { /* ignore */ }
+};
 
 export const speak = (text: string, lang?: Accent): void => {
   const accent = lang ?? getAccent();

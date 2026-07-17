@@ -27,7 +27,8 @@ import UserMenu from './components/UserMenu';
 import StudyFilterModal from './components/StudyFilterModal';
 import { drainOfflineQueue } from './utils/offlineSync';
 
-const PERSISTABLE_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
+// Only restore states that don't require pre-loaded data (learning/quiz/writing/games need flashcardsItems/quizQuestions which aren't persisted)
+const PERSISTABLE_STATES: AppState[] = ['selection', 'list', 'stats', 'tutor'];
 const HISTORY_STATES: AppState[] = ['selection', 'list', 'learning', 'writing', 'stats', 'tutor', 'games', 'quiz'];
 const ACTIVITY_STATES: AppState[] = ['learning', 'quiz', 'writing', 'games', 'tutor'];
 const PRESET_TAGS = ['IELTS', 'TOEFL', 'Academic', 'Business', 'Chapter 1', 'Chapter 2', 'Daily', 'Advanced'];
@@ -114,7 +115,8 @@ const App: React.FC = () => {
         };
         setCurrentUser(user);
         fetchAllWords();
-        const saved = localStorage.getItem(`swb_state_${user.id}`) as AppState | null;
+        let saved: AppState | null = null;
+        try { saved = localStorage.getItem(`swb_state_${user.id}`) as AppState | null; } catch { /* ignore */ }
         setState(saved && PERSISTABLE_STATES.includes(saved) ? saved : 'selection');
         const savedFilter = getStoredActiveFilter(user.id);
         setActiveStudyFilter(savedFilter);
@@ -131,8 +133,9 @@ const App: React.FC = () => {
         };
         setCurrentUser(user);
         fetchAllWords();
-        const saved = localStorage.getItem(`swb_state_${user.id}`) as AppState | null;
-        setState(saved && PERSISTABLE_STATES.includes(saved) ? saved : 'selection');
+        let saved2: AppState | null = null;
+        try { saved2 = localStorage.getItem(`swb_state_${user.id}`) as AppState | null; } catch { /* ignore */ }
+        setState(saved2 && PERSISTABLE_STATES.includes(saved2) ? saved2 : 'selection');
         const savedFilter = getStoredActiveFilter(user.id);
         setActiveStudyFilter(savedFilter);
       } else {

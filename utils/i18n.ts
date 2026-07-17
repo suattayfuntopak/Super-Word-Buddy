@@ -1,10 +1,16 @@
 export type Lang = 'tr' | 'en';
 
-export const getStoredLang = (): Lang =>
-  (localStorage.getItem('swb_lang') as Lang) ?? 'tr';
+export const getStoredLang = (): Lang => {
+  try {
+    return (localStorage.getItem('swb_lang') as Lang) ?? 'tr';
+  } catch {
+    return 'tr';
+  }
+};
 
-export const storeLang = (lang: Lang): void =>
-  localStorage.setItem('swb_lang', lang);
+export const storeLang = (lang: Lang): void => {
+  try { localStorage.setItem('swb_lang', lang); } catch { /* ignore */ }
+};
 
 export const translations = {
   tr: {

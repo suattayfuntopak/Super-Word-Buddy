@@ -3,18 +3,22 @@ import React, { Component, ErrorInfo } from 'react';
 
 interface State {
   hasError: boolean;
+  errorMessage: string;
 }
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, State> {
   props!: { children: React.ReactNode };
-  state: State = { hasError: false };
+  state: State = { hasError: false, errorMessage: '' };
 
-  static getDerivedStateFromError(): State {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, errorMessage: error?.message || String(error) };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('Uygulama hatası:', error, info);
+    // Log detailed error info for debugging
+    console.error('[SuperWordBuddy] Uygulama hatası:', error?.name, error?.message);
+    console.error('[SuperWordBuddy] Stack:', error?.stack);
+    console.error('[SuperWordBuddy] Component stack:', info?.componentStack);
   }
 
   render() {
